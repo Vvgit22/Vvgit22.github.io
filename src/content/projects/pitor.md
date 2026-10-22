@@ -7,7 +7,7 @@ period: 'August 2026 – present'
 role: 'Research Intern (part-time alongside degree)'
 team: 'Paris Institute for Transplantation & Organ Regeneration (PITOR)'
 tags: [Python, local LLMs, embeddings, clustering]
-thumbnail: /thumbs/pitor.svg
+thumbnail: /thumbs/pitor.webp
 order: 6
 ---
 
@@ -23,7 +23,40 @@ A local LLM pipeline automating the thematic analysis of 6,000+ free-text respon
 
 The pipeline runs locally, in outline:
 
-free text → structured coding → embeddings → clustering → source-verified quotes
+<div class="pitor-flow">
+  <span class="pitor-box">free text</span>
+  <span class="pitor-arrow">→</span>
+  <span class="pitor-box">structured coding</span>
+  <span class="pitor-arrow">→</span>
+  <span class="pitor-box">embeddings</span>
+  <span class="pitor-arrow">→</span>
+  <span class="pitor-box">clustering</span>
+  <span class="pitor-arrow">→</span>
+  <span class="pitor-box">source-verified quotes</span>
+</div>
+
+<style>
+  .pitor-flow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.75rem 0 1rem;
+  }
+  .pitor-box {
+    border: 1px solid var(--color-neutral-300);
+    border-radius: 0.5rem;
+    background: var(--color-neutral-50);
+    padding: 0.5rem 0.9rem;
+    font-size: 0.85rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--color-neutral-800);
+  }
+  .pitor-arrow {
+    color: var(--color-accent);
+    font-weight: 600;
+  }
+</style>
 
 ## What this does and does not show
 

@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import CompareSlider from '../components/CompareSlider.astro';
+import Video from '../components/Video.astro';
 
 const slides = [
   'Do new anode batches match the approved one?',
@@ -158,11 +159,14 @@ const evalRows = [
     >
   </section>
 
-  <section class="mb-4">
+  <section id="pitch" class="mb-4">
     <h2 class="mb-3 text-lg font-semibold">Video</h2>
-    <div class="rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-6 text-center text-sm text-neutral-600">
-      Two-minute pitch — coming here
-    </div>
+    <Video
+      src="/media/polaron-pitch.mp4"
+      poster="/media/polaron-pitch-poster.webp"
+      title="Polaron pitch"
+      caption="Two-minute pitch, London AI × Science Hackathon, 4 October 2026."
+    />
   </section>
 
   <script>

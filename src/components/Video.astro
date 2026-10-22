@@ -1,0 +1,32 @@
+---
+interface Props {
+  src: string;
+  poster?: string;
+  title: string;
+  caption?: string;
+}
+const { src, poster, title, caption } = Astro.props;
+---
+
+<figure class="video-embed">
+  <video
+    controls
+    preload="none"
+    playsinline
+    poster={poster}
+    src={src}
+    class="w-full rounded border border-neutral-200 bg-black"
+  >
+    Your browser does not support the video tag.{' '}
+    <a href={src} class="underline">Download {title}</a>.
+  </video>
+  <figcaption class="mt-2 flex items-baseline justify-between gap-4">
+    {caption && <span class="text-sm text-neutral-600">{caption}</span>}
+    <a
+      href={src}
+      download
+      class="shrink-0 text-sm text-accent underline-offset-2 hover:underline"
+      >Download</a
+    >
+  </figcaption>
+</figure>

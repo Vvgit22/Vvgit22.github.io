@@ -1,0 +1,88 @@
+---
+const stages = [
+  ['sources/', 'adapters → discover() → RawJobInput'],
+  ['jobs/normalize', 'deterministic parse: location, seniority, salary, degree, visa, languages, graduation window, skills'],
+  ['sources/filter', 'relevance: role function + early-career + track; rejected postings are never stored'],
+  ['jobs/dedupe', 'canonical URL → ATS id → structural key → fuzzy title'],
+  ['jobs/mutations', 'upsertJob: the single write path for every job'],
+  ['matching/', 'eligibility rules + deterministic weighted score'],
+  ['documents/', 'cover letters: provenance-guarded, voice-profiled, judged'],
+  ['UI', 'feed, detail, trackers, applications, documents'],
+];
+
+const dimensions = [
+  ['eligibility', '0.20', 'can I apply at all?'],
+  ['workCriteria', '0.15', 'could I take it — right to work, place, mode?'],
+  ['interest', '0.35', 'is this the kind of work I want?'],
+  ['experienceFit', '0.10', 'have I done comparable work, at about this level?'],
+  ['technicalFit', '0.20', 'do I have the skills it asks for?'],
+];
+
+const checks = [
+  ['citation', 'text that cites no fact, a non-existent fact, or an unverified fact'],
+  ['numeric', 'a figure that appears in no cited fact'],
+  ['lexical', 'a technology not in the skill list and not in any cited fact'],
+  ['company', 'a statement about the employer that cites no research-pack source'],
+];
+---
+
+<section class="jobos-arch">
+  <h2 class="mb-3 mt-7 text-lg font-semibold">Architecture</h2>
+  <ol class="mb-8 space-y-0">
+    {
+      stages.map(([name, desc], i) => (
+        <li class="relative pb-1">
+          <div class="rounded-lg border border-neutral-300 bg-neutral-50 px-4 py-2.5">
+            <span class="font-mono text-sm font-semibold text-neutral-800">{name}</span>
+            <span class="ml-2 text-sm text-neutral-600">— {desc}</span>
+          </div>
+          {i < stages.length - 1 && (
+            <div class="ml-8 h-4 w-px border-l-2 border-neutral-300" aria-hidden="true" />
+          )}
+        </li>
+      ))
+    }
+  </ol>
+
+  <h2 class="mb-3 mt-7 text-lg font-semibold">Score dimensions</h2>
+  <table class="mb-8 w-full border-collapse text-sm">
+    <thead>
+      <tr class="border-b border-neutral-300 text-left">
+        <th class="py-1.5 pr-4 font-medium">dimension</th>
+        <th class="py-1.5 pr-4 font-medium">weight</th>
+        <th class="py-1.5 font-medium">question</th>
+      </tr>
+    </thead>
+    <tbody>
+      {
+        dimensions.map(([d, w, q]) => (
+          <tr class="border-b border-neutral-100">
+            <td class="py-1.5 pr-4 font-mono text-xs">{d}</td>
+            <td class="py-1.5 pr-4 font-mono text-xs">{w}</td>
+            <td class="py-1.5 text-neutral-600">{q}</td>
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+
+  <h2 class="mb-3 mt-7 text-lg font-semibold">Provenance guard — four checks</h2>
+  <table class="w-full border-collapse text-sm">
+    <thead>
+      <tr class="border-b border-neutral-300 text-left">
+        <th class="py-1.5 pr-4 font-medium">check</th>
+        <th class="py-1.5 font-medium">rejects</th>
+      </tr>
+    </thead>
+    <tbody>
+      {
+        checks.map(([c, d]) => (
+          <tr class="border-b border-neutral-100">
+            <td class="py-1.5 pr-4 font-mono text-xs">{c}</td>
+            <td class="py-1.5 text-neutral-600">{d}</td>
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+</section>

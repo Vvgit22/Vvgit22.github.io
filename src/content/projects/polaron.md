@@ -10,6 +10,7 @@ tags: [Python, scikit-image, multi-Otsu, statistics, PyBaMM DFN]
 links:
   repo: https://github.com/Vvgit22/Polaron-SEM-Prediction-Algorithm
   demo: /polaron/
+  video: /polaron/#pitch
 thumbnail: /thumbs/polaron.webp
 order: 2
 ---
