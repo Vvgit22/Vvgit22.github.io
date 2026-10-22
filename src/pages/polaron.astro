@@ -2,6 +2,10 @@
 import Base from '../layouts/Base.astro';
 import CompareSlider from '../components/CompareSlider.astro';
 import Video from '../components/Video.astro';
+import DemoHeader from '../components/DemoHeader.astro';
+import { polaronExtras } from '../lib/media';
+
+const extras = polaronExtras();
 
 const slides = [
   'Do new anode batches match the approved one?',
@@ -27,22 +31,18 @@ const evalRows = [
   title="Electrode batch QC from SEM images — demo"
   description="Interactive walkthrough of the 48-hour SEM/BSE electrode batch-comparison pipeline."
 >
-  <p class="mb-4 text-sm">
-    <a href="/projects/polaron/" class="text-accent underline-offset-2 hover:underline"
-      >&larr; Back to project</a
-    >
-  </p>
-
-  <h1 class="mb-2 text-2xl font-bold">Electrode batch QC from SEM images</h1>
-  <p class="mb-3 text-neutral-700">
-    Can a new batch of electrode material be told apart from the approved one
-    from SEM images alone? After 48 hours: <strong>not yet</strong> — and here
-    is exactly why.
-  </p>
-  <div class="mb-10 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-    All numbers on this page come from the hackathon repository (RESULTS.md,
-    eval6/). Nothing has been re-run for this site.
-  </div>
+  <DemoHeader
+    backHref="/projects/polaron/"
+    title="Electrode batch QC from SEM images"
+    banner="All numbers on this page come from the hackathon repository (RESULTS.md, eval6/). Nothing has been re-run for this site."
+    tone="amber"
+  >
+    <p class="mb-3 text-neutral-700">
+      Can a new batch of electrode material be told apart from the approved one
+      from SEM images alone? After 48 hours: <strong>not yet</strong> — and here
+      is exactly why.
+    </p>
+  </DemoHeader>
 
   <section class="mb-10">
     <h2 class="mb-3 text-lg font-semibold">What the segmentation sees</h2>
@@ -158,6 +158,24 @@ const evalRows = [
       >Open the full RESULTS page</a
     >
   </section>
+
+  {
+    extras.length > 0 && (
+      <section class="mb-10">
+        <h2 class="mb-3 text-lg font-semibold">More figures</h2>
+        <div class="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2">
+          {extras.map((src) => (
+            <img
+              src={src}
+              alt="Additional pipeline figure"
+              loading="lazy"
+              class="h-48 w-auto shrink-0 snap-start rounded border border-neutral-200"
+            />
+          ))}
+        </div>
+      </section>
+    )
+  }
 
   <section id="pitch" class="mb-4">
     <h2 class="mb-3 text-lg font-semibold">Video</h2>

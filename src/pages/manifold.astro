@@ -1,22 +1,18 @@
 ---
 import Base from '../layouts/Base.astro';
+import DemoHeader from '../components/DemoHeader.astro';
 ---
 
 <Base
   title="Neural manifolds — synthetic illustration"
   description="A browser-side illustration of low-dimensional structure in high-dimensional activity, on fully synthetic data."
 >
-  <p class="mb-4 text-sm">
-    <a href="/projects/neural-manifolds/" class="text-accent underline-offset-2 hover:underline"
-      >&larr; Back to project</a
-    >
-  </p>
-
-  <h1 class="mb-3 text-2xl font-bold">A neural manifold, illustrated</h1>
-  <div class="mb-5 rounded-lg border border-blue-300 bg-blue-50 p-4 text-sm text-blue-900">
-    Illustration on synthetic data generated in your browser. No PREVENT
-    Dementia data and no Schultz Lab results are shown.
-  </div>
+  <DemoHeader
+    backHref="/projects/neural-manifolds/"
+    title="A neural manifold, illustrated"
+    banner="Illustration on synthetic data generated in your browser. No PREVENT Dementia data and no Schultz Lab results are shown."
+    tone="blue"
+  />
 
   <div class="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
     <label class="flex items-center gap-1.5">

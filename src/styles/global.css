@@ -9,6 +9,59 @@
 
 html {
   font-family: var(--font-sans);
+  font-feature-settings:
+    'ss01' off,
+    'cv11' off;
+}
+
+body {
+  background: #fbfbfa;
+  color: #111111;
+  font-size: 1.0625rem;
+  line-height: 1.65;
+}
+
+h1 {
+  font-size: 2.25rem;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+/* Dark mode: invert the Tailwind palette tokens so every neutral-*,
+   white and accent utility flips without per-element variants. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-white: #0f1113;
+    --color-accent: #3fae76;
+    --color-neutral-50: #16191d;
+    --color-neutral-100: #1e2227;
+    --color-neutral-200: #262a2f;
+    --color-neutral-300: #31363d;
+    --color-neutral-400: #4b525c;
+    --color-neutral-500: #9aa3ad;
+    --color-neutral-600: #9aa3ad;
+    --color-neutral-700: #c7ccd2;
+    --color-neutral-800: #e8eaed;
+    --color-neutral-900: #e8eaed;
+    --color-green-50: #0f2018;
+    --color-green-100: #123324;
+    --color-green-300: #2c5f45;
+    --color-green-900: #9ad9b8;
+    --color-blue-50: #101a28;
+    --color-blue-100: #12233a;
+    --color-blue-300: #2c4a70;
+    --color-blue-900: #9cc3f0;
+    --color-amber-50: #241b08;
+    --color-amber-100: #2c2210;
+    --color-amber-300: #7a5a1c;
+    --color-amber-900: #f0c878;
+  }
+
+  body {
+    background: #0f1113;
+    color: #e8eaed;
+  }
 }
 
 /* Rendered Markdown bodies (project pages) — preflight resets these otherwise */
@@ -36,4 +89,36 @@ html {
 .prose-body code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.9em;
+}
+
+/* The final "What this does and does not show" section is always the last
+   h2 in every project file — render it as a visible callout box. */
+.prose-body > h2:last-of-type,
+.prose-body > h2:last-of-type ~ * {
+  background: var(--callout-bg, #f4f4f2);
+  border-left: 1px solid var(--hairline, #e6e8eb);
+  border-right: 1px solid var(--hairline, #e6e8eb);
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.prose-body > h2:last-of-type {
+  border-top: 1px solid var(--hairline, #e6e8eb);
+  border-radius: 10px 10px 0 0;
+  padding-top: 0.75rem;
+  margin-bottom: 0;
+}
+
+.prose-body > h2:last-of-type ~ :last-child {
+  border-bottom: 1px solid var(--hairline, #e6e8eb);
+  border-radius: 0 0 10px 10px;
+  padding-bottom: 0.75rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .prose-body > h2:last-of-type,
+  .prose-body > h2:last-of-type ~ * {
+    --callout-bg: #16191d;
+    --hairline: #262a2f;
+  }
 }

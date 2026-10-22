@@ -4,9 +4,10 @@ import '../styles/global.css';
 interface Props {
   title: string;
   description?: string;
+  wide?: boolean;
 }
 
-const { title, description = 'Portfolio of Vadim Vadanici — software and analyses at the edge of engineering and medicine.' } = Astro.props;
+const { title, description = 'Portfolio of Vadim Vadanici — software and analyses at the edge of engineering and medicine.', wide = false } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const ogImage = new URL('/og.png', Astro.site);
 ---
@@ -28,8 +29,17 @@ const ogImage = new URL('/og.png', Astro.site);
     <meta name="twitter:card" content="summary" />
   </head>
   <body class="bg-white text-neutral-900 antialiased">
-    <main class="mx-auto max-w-[720px] px-5 py-10">
+    <main class:list={['mx-auto px-5 py-10', wide ? 'max-w-[960px]' : 'max-w-[68ch]']}>
       <slot />
+      <footer
+        class="mt-16 border-t border-neutral-200 pt-3 text-sm text-neutral-500"
+      >
+        <a
+          href="https://github.com/Vvgit22/Vvgit22.github.io"
+          class="underline underline-offset-2 hover:text-neutral-800"
+          >source on GitHub</a
+        > · <a href="#" class="underline underline-offset-2 hover:text-neutral-800">back to top</a>
+      </footer>
     </main>
   </body>
 </html>

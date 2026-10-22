@@ -10,6 +10,9 @@ tags: [Python, FastAPI, Bluetooth LE, pygame, HTML/JS]
 links:
   repo: https://github.com/Vvgit22/ReQuest-Physiotherapy
   demo: /request/
+  more:
+    - label: Game code (pygame)
+      url: https://github.com/Vvgit22/Latest-Request-Game
 thumbnail: /thumbs/request.webp
 order: 1
 ---

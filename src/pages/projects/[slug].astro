@@ -1,11 +1,11 @@
 ---
 import { getCollection, render } from 'astro:content';
-import { existsSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+
 import Base from '../../layouts/Base.astro';
 import StatusChip from '../../components/StatusChip.astro';
 import Video from '../../components/Video.astro';
 import JobOsArchitecture from '../../components/JobOsArchitecture.astro';
+import { mediaExists, requestPhotos } from '../../lib/media';
 
 export async function getStaticPaths() {
   const projects = await getCollection('projects');
@@ -23,13 +23,11 @@ const hasDemo = Boolean(data.links?.demo);
 const isJobOs = project.id === 'job-os';
 const demoPending =
   !hasDemo && !isJobOs && (data.status === 'live' || data.status === 'video');
-const jobOsVideoExists = isJobOs
-  ? existsSync(
-      fileURLToPath(
-        new URL('../../../public/media/job-os-demo.mp4', import.meta.url),
-      ),
-    )
-  : false;
+const jobOsVideoExists = isJobOs && mediaExists('job-os-demo.mp4');
+const isRequest = project.id === 'request';
+const requestVideoExists = isRequest && mediaExists('request-game.mp4');
+const requestPhotoList = isRequest ? requestPhotos() : [];
+const extras = data.links?.more ?? [];
 ---
 
 <Base title={`${data.title} — Vadim Vadanici`} description={data.summary}>
@@ -44,11 +42,11 @@ const jobOsVideoExists = isJobOs
       <h1 class="text-2xl font-bold">{data.title}</h1>
       <StatusChip status={data.status} label={data.statusLabel} />
     </div>
-    <dl class="text-sm text-neutral-600">
-      <div class="mt-1"><dt class="inline font-medium text-neutral-800">Period: </dt><dd class="inline">{data.period}</dd></div>
-      <div class="mt-1"><dt class="inline font-medium text-neutral-800">Role: </dt><dd class="inline">{data.role}</dd></div>
+    <dl class="grid gap-x-8 gap-y-1 text-sm text-neutral-600 sm:grid-cols-2">
+      <div><dt class="inline font-medium text-neutral-800">Period: </dt><dd class="inline">{data.period}</dd></div>
+      <div><dt class="inline font-medium text-neutral-800">Role: </dt><dd class="inline">{data.role}</dd></div>
       {data.team && (
-        <div class="mt-1"><dt class="inline font-medium text-neutral-800">Team: </dt><dd class="inline">{data.team}</dd></div>
+        <div><dt class="inline font-medium text-neutral-800">Team: </dt><dd class="inline">{data.team}</dd></div>
       )}
     </dl>
     <ul class="mt-3 flex flex-wrap gap-1.5">
@@ -56,28 +54,30 @@ const jobOsVideoExists = isJobOs
         <li class="rounded bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">{tag}</li>
       ))}
     </ul>
-    {(data.links?.repo || data.links?.demo || data.links?.video) && (
-      <nav class="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm">
-        {data.links.repo && (
-          <a href={data.links.repo} class="text-accent underline-offset-2 hover:underline">Repository</a>
-        )}
-        {data.links.demo && (
-          <a href={data.links.demo} class="text-accent underline-offset-2 hover:underline">Demo</a>
-        )}
-        {data.links.video && (
-          <a href={data.links.video} class="text-accent underline-offset-2 hover:underline">Video</a>
-        )}
-      </nav>
-    )}
   </header>
 
-  {hasDemo && (
-    <a
-      href={data.links!.demo}
-      class="mb-8 inline-block rounded-lg bg-accent px-5 py-2.5 font-semibold text-white hover:bg-green-900"
-    >
-      Open the demo &rarr;
-    </a>
+  {(data.links?.repo || data.links?.demo || data.links?.video || extras.length > 0 || hasDemo) && (
+    <div class="mb-8 flex flex-wrap items-center gap-x-5 gap-y-2">
+      {hasDemo && (
+        <a
+          href={data.links!.demo}
+          class="inline-block rounded-lg bg-accent px-5 py-2.5 font-semibold text-white hover:bg-green-900"
+        >
+          Open the demo &rarr;
+        </a>
+      )}
+      <nav class="flex flex-wrap gap-x-5 gap-y-1 text-sm">
+        {data.links?.repo && (
+          <a href={data.links.repo} class="text-accent underline-offset-2 hover:underline">Repository</a>
+        )}
+        {data.links?.video && (
+          <a href={data.links.video} class="text-accent underline-offset-2 hover:underline">Video</a>
+        )}
+        {extras.map((l) => (
+          <a href={l.url} class="text-accent underline-offset-2 hover:underline">{l.label}</a>
+        ))}
+      </nav>
+    </div>
   )}
 
   {demoPending && (
@@ -107,6 +107,38 @@ const jobOsVideoExists = isJobOs
     <Content />
   </article>
 
+  {requestVideoExists && (
+    <section class="mb-8">
+      <h2 class="mb-3 mt-8 text-lg font-semibold">The game</h2>
+      <Video
+        src="/media/request-game.mp4"
+        poster={
+          mediaExists('request-game-poster.webp')
+            ? '/media/request-game-poster.webp'
+            : undefined
+        }
+        title="ReQuest game"
+        caption="The pygame dungeon driven by the wristbands over Bluetooth."
+      />
+    </section>
+  )}
+
+  {requestPhotoList.length > 0 && (
+    <section class="mb-8">
+      <h2 class="mb-3 mt-8 text-lg font-semibold">Hardware</h2>
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {requestPhotoList.map((src) => (
+          <img
+            src={src}
+            alt="ReQuest wristband hardware"
+            loading="lazy"
+            class="w-full rounded-lg border border-neutral-200 object-cover"
+          />
+        ))}
+      </div>
+    </section>
+  )}
+
   {isJobOs && (
     <section class="mb-8">
       <h2 class="mb-3 mt-8 text-lg font-semibold">Recording</h2>
@@ -115,7 +147,7 @@ const jobOsVideoExists = isJobOs
           src="/media/job-os-demo.mp4"
           poster="/media/job-os-demo-poster.webp"
           title="Job OS demo"
-          caption="Job OS walkthrough — seeded data, no real applications."
+          caption="Walkthrough on a throwaway database with a fictional candidate and fictional postings — no real applications are shown."
         />
       ) : (
         <div class="rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-6 text-center text-sm text-neutral-600">

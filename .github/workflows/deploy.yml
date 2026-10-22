@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+      - name: Check media sizes
+        run: node scripts/media-check.mjs
       - name: Build with Astro
         uses: withastro/action@v3
         with:
