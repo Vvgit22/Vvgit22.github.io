@@ -14,6 +14,86 @@ import DemoHeader from '../components/DemoHeader.astro';
     tone="blue"
   />
 
+  <section class="mb-12">
+    <div class="mb-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+      Simulated fMRI-like signals — not real brain data. This shows the idea:
+      many regions' time series, read together, trace a low-dimensional shape.
+    </div>
+
+    <div class="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+      <button
+        id="fm-play"
+        class="rounded border border-neutral-300 px-3 py-1 hover:bg-neutral-100"
+        >pause</button
+      >
+      <label class="flex items-center gap-2">
+        noise σ
+        <input type="range" id="fm-noise" min="0" max="1" step="0.05" value="0.3" class="w-28" />
+        <span id="fm-noise-val" class="w-8 text-neutral-600">0.30</span>
+      </label>
+      <label class="flex items-center gap-2">
+        regions
+        <select id="fm-regions" class="rounded border border-neutral-300 px-1 py-0.5">
+          <option value="16">16</option>
+          <option value="48" selected>48</option>
+          <option value="96">96</option>
+        </select>
+      </label>
+      <label class="flex items-center gap-1.5">
+        <input type="checkbox" id="fm-latent3" /> third latent oscillator
+      </label>
+      <span class="text-xs text-neutral-500">drag the right panel to rotate</span>
+    </div>
+
+    <div class="flex flex-col gap-4 md:flex-row">
+      <div class="md:w-[45%]">
+        <canvas
+          id="fm-heat"
+          width="420"
+          height="360"
+          class="w-full rounded border border-neutral-200 bg-white"
+          aria-label="Heat-map of 48 simulated region time series"
+          role="img"></canvas>
+        <p class="mt-1 text-xs text-neutral-500" id="fm-heat-cap">
+          48 simulated regions × 300 TRs (TR = 2 s)
+        </p>
+      </div>
+      <div class="md:w-[55%]">
+        <canvas
+          id="fm-traj"
+          width="500"
+          height="360"
+          class="w-full rounded border border-neutral-200 bg-white"
+          aria-label="PCA trajectory of the simulated region signals in 3-D"
+          role="img"></canvas>
+        <p class="mt-1 text-xs text-neutral-500" id="fm-var">
+          variance explained: —</p
+        >
+      </div>
+    </div>
+
+    <div class="mt-4 space-y-2 text-sm leading-relaxed text-neutral-700">
+      <p>
+        The heat-map shows one simulated time series per region: two (or three)
+        slow latent oscillators, mixed differently into each region, passed
+        through a soft nonlinearity, with noise and a slow drift added.
+      </p>
+      <p>
+        Although there are 48 signals, the right panel keeps only their three
+        strongest shared directions (PCA): the activity still traces a tight
+        loop, because the regions are not independent — they all read the same
+        few latent variables. Raise the noise and the explained variance drops;
+        the shape unravels.
+      </p>
+      <p>
+        In the real project the equivalent question is asked of PREVENT
+        Dementia fMRI with MIMI (a mutual-information method) rather than PCA —
+        no results are implied here.
+      </p>
+    </div>
+  </section>
+
+  <h2 class="mb-2 text-lg font-semibold">A rolled sheet in 3-D</h2>
   <div class="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
     <label class="flex items-center gap-1.5">
       <input type="checkbox" id="autorotate" checked /> auto-rotate
@@ -61,6 +141,286 @@ import DemoHeader from '../components/DemoHeader.astro';
       manifold, and does that manifold change with age?
     </p>
   </div>
+
+  <script>
+    // ---- simulated fMRI → low-dimensional trajectory -----------------------
+    const heatCv = document.getElementById('fm-heat') as HTMLCanvasElement;
+    const trajCv = document.getElementById('fm-traj') as HTMLCanvasElement;
+    const hctx = heatCv.getContext('2d')!;
+    const tctx = trajCv.getContext('2d')!;
+    const reducedFM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const T = 300, TR = 2;
+    let fmSeed = 0x51ed1e;
+    function fmRand() {
+      fmSeed |= 0;
+      fmSeed = (fmSeed + 0x6d2b79f5) | 0;
+      let t = Math.imul(fmSeed ^ (fmSeed >>> 15), 1 | fmSeed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    }
+    function fmGauss() {
+      const u = Math.max(fmRand(), 1e-9);
+      const v = fmRand();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+
+    // diverging blue-white-red
+    function divColor(v: number): [number, number, number] {
+      const t = Math.max(-1, Math.min(1, v));
+      const lerp = (a: number[], b: number[], f: number) =>
+        a.map((x, i) => x + (b[i] - x) * f);
+      const c = t < 0
+        ? lerp([33, 102, 172], [247, 247, 247], 1 + t)
+        : lerp([247, 247, 247], [178, 24, 43], t);
+      return [c[0] | 0, c[1] | 0, c[2] | 0];
+    }
+
+    // Jacobi eigendecomposition of a symmetric n×n matrix
+    function jacobi(m: number[][]): { vals: number[]; vecs: number[][] } {
+      const n = m.length;
+      const a = m.map(r => [...r]);
+      const v: number[][] = Array.from({ length: n }, (_, i) =>
+        Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)));
+      for (let it = 0; it < 60; it++) {
+        let pi = 0, pj = 1, mx = 0;
+        for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+          if (Math.abs(a[i][j]) > mx) { mx = Math.abs(a[i][j]); pi = i; pj = j; }
+        }
+        if (mx < 1e-12) break;
+        const th = 0.5 * Math.atan2(2 * a[pi][pj], a[pj][pj] - a[pi][pi]);
+        const c = Math.cos(th), s = Math.sin(th);
+        for (let k = 0; k < n; k++) {
+          const x = a[k][pi], y = a[k][pj];
+          a[k][pi] = c * x - s * y; a[k][pj] = s * x + c * y;
+        }
+        for (let k = 0; k < n; k++) {
+          const x = a[pi][k], y = a[pj][k];
+          a[pi][k] = c * x - s * y; a[pj][k] = s * x + c * y;
+        }
+        for (let k = 0; k < n; k++) {
+          const x = v[k][pi], y = v[k][pj];
+          v[k][pi] = c * x - s * y; v[k][pj] = s * x + c * y;
+        }
+      }
+      const idx = Array.from({ length: n }, (_, i) => i).sort(
+        (i, j) => a[j][j] - a[i][i]);
+      return {
+        vals: idx.map(i => Math.max(a[i][i], 0)),
+        vecs: idx.map(i => v.map(row => row[i])),
+      };
+    }
+
+    interface FM {
+      X: Float32Array[];        // T × R centred data
+      heat: ImageData;          // pre-rendered heat-map
+      traj: number[][];         // T × 3 PCA scores
+      varpct: number[];         // top-3 explained %
+      R: number;
+    }
+
+    let nRegions = 48, latent3 = false, noiseSigma = 0.3;
+    let fm: FM;
+    let cur = 0, playing = !reducedFM, acc = 0;
+
+    function buildFM() {
+      fmSeed = 0x51ed1e;
+      const R = nRegions;
+      // latent oscillators: ~40 s, ~65 s (and ~110 s when toggled)
+      const periods = latent3 ? [20, 32.5, 55] : [20, 32.5]; // in TRs (2 s)
+      const L = periods.map(p =>
+        Array.from({ length: T }, (_, t) => Math.sin(2 * Math.PI * t / p + p)));
+      // per-region weights, nonlinearity, noise, drift
+      const w: number[][] = [];
+      const dr: number[] = [];
+      for (let r = 0; r < R; r++) {
+        w.push(periods.map(() => fmGauss()));
+        dr.push((fmRand() - 0.5) * 0.004);
+      }
+      const noise: number[][] = [];
+      for (let r = 0; r < R; r++) {
+        const row: number[] = [];
+        for (let t = 0; t < T; t++) row.push(fmGauss());
+        noise.push(row);
+      }
+      const X: Float32Array[] = [];
+      for (let t = 0; t < T; t++) {
+        const row = new Float32Array(R);
+        for (let r = 0; r < R; r++) {
+          let z = 0;
+          for (let k = 0; k < periods.length; k++) z += w[r][k] * L[k][t];
+          row[r] = Math.tanh(z) + noiseSigma * noise[r][t] + dr[r] * t;
+        }
+        X.push(row);
+      }
+      // centre columns
+      for (let r = 0; r < R; r++) {
+        let m = 0;
+        for (let t = 0; t < T; t++) m += X[t][r];
+        m /= T;
+        for (let t = 0; t < T; t++) X[t][r] -= m;
+      }
+      // R×R covariance → top-3 PCs
+      const cov: number[][] = Array.from({ length: R }, () => new Array(R).fill(0));
+      for (let i = 0; i < R; i++) for (let j = i; j < R; j++) {
+        let s = 0;
+        for (let t = 0; t < T; t++) s += X[t][i] * X[t][j];
+        cov[i][j] = cov[j][i] = s / T;
+      }
+      const { vals, vecs } = jacobi(cov);
+      const totVar = vals.reduce((a, b) => a + b, 0) || 1;
+      const varpct = [0, 1, 2].map(k => 100 * vals[k] / totVar);
+      const traj: number[][] = [];
+      for (let t = 0; t < T; t++) {
+        traj.push([0, 1, 2].map(k => {
+          let s = 0;
+          for (let r = 0; r < R; r++) s += X[t][r] * vecs[k][r];
+          return s;
+        }));
+      }
+      // pre-render heat-map pixels
+      const heat = hctx.createImageData(T, R);
+      let mx = 1e-9;
+      for (let t = 0; t < T; t++) for (let r = 0; r < R; r++)
+        mx = Math.max(mx, Math.abs(X[t][r]));
+      for (let t = 0; t < T; t++) for (let r = 0; r < R; r++) {
+        const [cr, cg, cb] = divColor(X[t][r] / mx);
+        const o = (r * T + t) * 4;
+        heat.data[o] = cr; heat.data[o + 1] = cg; heat.data[o + 2] = cb;
+        heat.data[o + 3] = 255;
+      }
+      fm = { X, heat, traj, varpct, R };
+      heatOff.width = T;
+      heatOff.height = R;
+      hOffCtx.putImageData(heat, 0, 0);
+      document.getElementById('fm-var')!.textContent =
+        `variance explained: PC1 ${varpct[0].toFixed(0)}% · ` +
+        `PC2 ${varpct[1].toFixed(0)}% · PC3 ${varpct[2].toFixed(0)}%`;
+      document.getElementById('fm-heat-cap')!.textContent =
+        `${R} simulated regions × ${T} TRs (TR = ${TR} s)`;
+    }
+
+    // offscreen canvas for the heat-map so scaling is one drawImage
+    const heatOff = document.createElement('canvas');
+    const hOffCtx = heatOff.getContext('2d')!;
+
+    let yawF = 0.7, pitchF = -0.3, dragF = false, lxF = 0, lyF = 0;
+    trajCv.addEventListener('pointerdown', e => {
+      dragF = true; lxF = e.clientX; lyF = e.clientY;
+      trajCv.setPointerCapture(e.pointerId);
+    });
+    trajCv.addEventListener('pointermove', e => {
+      if (!dragF) return;
+      yawF += (e.clientX - lxF) * 0.008;
+      pitchF = Math.max(-1.5, Math.min(1.5, pitchF + (e.clientY - lyF) * 0.008));
+      lxF = e.clientX; lyF = e.clientY;
+    });
+    trajCv.addEventListener('pointerup', () => (dragF = false));
+    trajCv.addEventListener('pointercancel', () => (dragF = false));
+
+    const playBtn = document.getElementById('fm-play') as HTMLButtonElement;
+    playBtn.textContent = playing ? 'pause' : 'play';
+    playBtn.addEventListener('click', () => {
+      playing = !playing;
+      playBtn.textContent = playing ? 'pause' : 'play';
+    });
+    const noiseEl = document.getElementById('fm-noise') as HTMLInputElement;
+    const noiseVal = document.getElementById('fm-noise-val')!;
+    noiseEl.addEventListener('input', () => {
+      noiseSigma = Number(noiseEl.value);
+      noiseVal.textContent = noiseSigma.toFixed(2);
+      buildFM();
+    });
+    (document.getElementById('fm-regions') as HTMLSelectElement)
+      .addEventListener('change', e => {
+        nRegions = Number((e.target as HTMLSelectElement).value);
+        buildFM();
+      });
+    (document.getElementById('fm-latent3') as HTMLInputElement)
+      .addEventListener('change', e => {
+        latent3 = (e.target as HTMLInputElement).checked;
+        buildFM();
+      });
+
+    const SPEED = 20; // TRs per second of playback
+    let lastFM = performance.now();
+    function fmFrame(now: number) {
+      const dt = Math.min((now - lastFM) / 1000, 0.1);
+      lastFM = now;
+      if (playing) {
+        acc += dt * SPEED;
+        if (acc >= 1) { cur = (cur + Math.floor(acc)) % T; acc %= 1; }
+      }
+      const { traj, R } = fm!;
+      const W1 = heatCv.width, H1 = heatCv.height;
+      const W2 = trajCv.width, H2 = trajCv.height;
+
+      // heat-map
+      hctx.clearRect(0, 0, W1, H1);
+      const labelW = 26;
+      hctx.imageSmoothingEnabled = false;
+      hctx.drawImage(heatOff, labelW, 0, W1 - labelW, H1);
+      // row labels (up to 16 labels)
+      hctx.fillStyle = '#5b6470';
+      hctx.font = '8px ui-monospace, monospace';
+      const step = Math.max(1, Math.ceil(R / 12));
+      for (let r = 0; r < R; r += step) {
+        hctx.fillText(
+          'R' + String(r + 1).padStart(2, '0'),
+          1, (r + 0.7) * H1 / R);
+      }
+      // cursor
+      const cxp = labelW + (cur + 0.5) * (W1 - labelW) / T;
+      hctx.strokeStyle = '#111';
+      hctx.lineWidth = 1.5;
+      hctx.beginPath();
+      hctx.moveTo(cxp, 0); hctx.lineTo(cxp, H1); hctx.stroke();
+
+      // trajectory
+      tctx.clearRect(0, 0, W2, H2);
+      let mx2 = 1e-9;
+      for (const p of traj) for (const c of p) mx2 = Math.max(mx2, Math.abs(c));
+      const sc = 0.42 * Math.min(W2, H2) / mx2;
+      const syw = Math.sin(yawF), cyw = Math.cos(yawF);
+      const sp = Math.sin(pitchF), cp = Math.cos(pitchF);
+      const proj = (p: number[]): [number, number] => {
+        const [x, y, z] = p;
+        const x1 = x * cyw - z * syw, z1 = x * syw + z * cyw;
+        const y1 = y * cp - z1 * sp, z2 = y * sp + z1 * cp;
+        const s = 300 / (300 + z2 * sc * 0.12);
+        return [W2 / 2 + x1 * sc * s, H2 / 2 + y1 * sc * s];
+      };
+      // faint full path
+      tctx.strokeStyle = 'rgba(140,150,160,.45)';
+      tctx.lineWidth = 1;
+      tctx.beginPath();
+      for (let t = 0; t < T; t++) {
+        const [a, b] = proj(traj[t]);
+        t ? tctx.lineTo(a, b) : tctx.moveTo(a, b);
+      }
+      tctx.stroke();
+      // fading trail toward current point
+      const TRAIL = 90;
+      for (let k = TRAIL; k > 0; k--) {
+        const t1 = (cur - k + T) % T, t2 = (cur - k + 1 + T) % T;
+        const [a, b] = proj(traj[t1]);
+        const [c, d] = proj(traj[t2]);
+        tctx.strokeStyle = `rgba(14,107,61,${0.15 + 0.85 * (1 - k / TRAIL)})`;
+        tctx.lineWidth = 2;
+        tctx.beginPath(); tctx.moveTo(a, b); tctx.lineTo(c, d); tctx.stroke();
+      }
+      // current dot
+      const [dx, dy] = proj(traj[cur]);
+      tctx.fillStyle = '#0e6b3d';
+      tctx.beginPath(); tctx.arc(dx, dy, 4.5, 0, 6.2832); tctx.fill();
+      tctx.fillStyle = '#fff';
+      tctx.beginPath(); tctx.arc(dx, dy, 1.8, 0, 6.2832); tctx.fill();
+
+      requestAnimationFrame(fmFrame);
+    }
+    buildFM();
+    requestAnimationFrame(fmFrame);
+  </script>
 
   <script>
     const canvas = document.getElementById('cv') as HTMLCanvasElement;

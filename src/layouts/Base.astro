@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import { REPO_URL } from '../config';
 
 interface Props {
   title: string;
@@ -35,7 +36,7 @@ const ogImage = new URL('/og.png', Astro.site);
         class="mt-16 border-t border-neutral-200 pt-3 text-sm text-neutral-500"
       >
         <a
-          href="https://github.com/Vvgit22/Vvgit22.github.io"
+          href={REPO_URL}
           class="underline underline-offset-2 hover:text-neutral-800"
           >source on GitHub</a
         > · <a href="#" class="underline underline-offset-2 hover:text-neutral-800">back to top</a>

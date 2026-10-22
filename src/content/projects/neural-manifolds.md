@@ -27,4 +27,4 @@ We are refining MIMI, an information-theoretic method that infers low-dimensiona
 
 ## What this does and does not show
 
-The interactive illustration on this page runs on synthetic data generated in your browser. No PREVENT Dementia data and no Schultz Lab results are shown. The project started in October 2026; there are no results yet.
+Both interactive illustrations on this page — the simulated fMRI-like signals and the Swiss-roll — run on synthetic data generated in your browser. No PREVENT Dementia data and no Schultz Lab results are shown. The project started in October 2026; there are no results yet.

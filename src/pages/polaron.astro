@@ -4,6 +4,9 @@ import CompareSlider from '../components/CompareSlider.astro';
 import Video from '../components/Video.astro';
 import DemoHeader from '../components/DemoHeader.astro';
 import { polaronExtras } from '../lib/media';
+import { GITHUB_USER } from '../config';
+
+const POLARON_REPO = `https://github.com/${GITHUB_USER}/Polaron-SEM-Prediction-Algorithm`;
 
 const extras = polaronExtras();
 
@@ -87,7 +90,7 @@ const evalRows = [
     </div>
     <p class="mt-2 text-sm">
       <a
-        href="https://github.com/Vvgit22/Polaron-SEM-Prediction-Algorithm/blob/hackathon-polaron-work/Hackathon-Polaron/teamjester_deck/TeamJester_Algorithm_Overview.pdf"
+        href={`${POLARON_REPO}/blob/hackathon-polaron-work/Hackathon-Polaron/teamjester_deck/TeamJester_Algorithm_Overview.pdf`}
         class="text-accent underline-offset-2 hover:underline"
         >Full deck (PDF) on GitHub</a
       >
@@ -143,7 +146,7 @@ const evalRows = [
     </p>
     <p class="mt-2 text-sm">
       <a
-        href="https://github.com/Vvgit22/Polaron-SEM-Prediction-Algorithm/blob/hackathon-polaron-work/Hackathon-Polaron/eval6/REPORT.md"
+        href={`${POLARON_REPO}/blob/hackathon-polaron-work/Hackathon-Polaron/eval6/REPORT.md`}
         class="text-accent underline-offset-2 hover:underline"
         >eval6/REPORT.md on GitHub</a
       >

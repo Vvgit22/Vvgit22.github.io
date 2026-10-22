@@ -11,6 +11,7 @@
     "media:check": "node scripts/media-check.mjs"
   },
   "dependencies": {
+    "@astrojs/sitemap": "^3.7.3",
     "astro": "7.3.8"
   },
   "devDependencies": {
