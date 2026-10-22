@@ -10,3 +10,30 @@
 html {
   font-family: var(--font-sans);
 }
+
+/* Rendered Markdown bodies (project pages) — preflight resets these otherwise */
+.prose-body h2 {
+  font-weight: 600;
+  font-size: 1.125rem;
+  margin: 2rem 0 0.5rem;
+}
+
+.prose-body p {
+  margin: 0.5rem 0 1rem;
+  line-height: 1.65;
+}
+
+.prose-body ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+
+.prose-body a {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.prose-body code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+}

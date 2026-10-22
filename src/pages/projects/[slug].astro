@@ -80,26 +80,6 @@ const jobOsVideoExists = isJobOs
     </a>
   )}
 
-  {isJobOs && (
-    <section class="mb-8">
-      {jobOsVideoExists ? (
-        <Video
-          src="/media/job-os-demo.mp4"
-          poster="/media/job-os-demo-poster.webp"
-          title="Job OS demo"
-          caption="Job OS walkthrough — seeded data, no real applications."
-        />
-      ) : (
-        <div class="rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-6 text-center text-sm text-neutral-600">
-          Recording coming soon.
-        </div>
-      )}
-      <div class="mt-8">
-        <JobOsArchitecture />
-      </div>
-    </section>
-  )}
-
   {demoPending && (
     <div class="mb-8 rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-6 text-center text-sm text-neutral-600">
       Demo coming to this page.
@@ -123,21 +103,28 @@ const jobOsVideoExists = isJobOs
     </section>
   )}
 
-  <article class="prose-portfolio">
+  <article class="prose-body">
     <Content />
   </article>
-</Base>
 
-<style>
-  .prose-portfolio h2 {
-    margin-top: 1.75rem;
-    margin-bottom: 0.5rem;
-    font-size: 1.125rem;
-    font-weight: 600;
-  }
-  .prose-portfolio p {
-    margin-bottom: 0.75rem;
-    line-height: 1.65;
-    color: var(--color-neutral-700);
-  }
-</style>
+  {isJobOs && (
+    <section class="mb-8">
+      <h2 class="mb-3 mt-8 text-lg font-semibold">Recording</h2>
+      {jobOsVideoExists ? (
+        <Video
+          src="/media/job-os-demo.mp4"
+          poster="/media/job-os-demo-poster.webp"
+          title="Job OS demo"
+          caption="Job OS walkthrough — seeded data, no real applications."
+        />
+      ) : (
+        <div class="rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-6 text-center text-sm text-neutral-600">
+          Recording coming soon.
+        </div>
+      )}
+      <div class="mt-8">
+        <JobOsArchitecture />
+      </div>
+    </section>
+  )}
+</Base>

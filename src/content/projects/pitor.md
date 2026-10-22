@@ -25,13 +25,9 @@ The pipeline runs locally, in outline:
 
 <div class="pitor-flow">
   <span class="pitor-box">free text</span>
-  <span class="pitor-arrow">→</span>
   <span class="pitor-box">structured coding</span>
-  <span class="pitor-arrow">→</span>
   <span class="pitor-box">embeddings</span>
-  <span class="pitor-arrow">→</span>
   <span class="pitor-box">clustering</span>
-  <span class="pitor-arrow">→</span>
   <span class="pitor-box">source-verified quotes</span>
 </div>
 
@@ -52,7 +48,8 @@ The pipeline runs locally, in outline:
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     color: var(--color-neutral-800);
   }
-  .pitor-arrow {
+  .pitor-box:not(:last-child)::after {
+    content: ' →';
     color: var(--color-accent);
     font-weight: 600;
   }
