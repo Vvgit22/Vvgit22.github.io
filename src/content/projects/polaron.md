@@ -9,7 +9,8 @@ team: 'Team Jester — London AI × Science Hackathon (Iterate), Polaron & Cogni
 tags: [Python, scikit-image, multi-Otsu, statistics, PyBaMM DFN]
 links:
   repo: https://github.com/Vvgit22/Polaron-SEM-Prediction-Algorithm
-thumbnail: /thumbs/polaron.svg
+  demo: /polaron/
+thumbnail: /thumbs/polaron.webp
 order: 2
 ---
 

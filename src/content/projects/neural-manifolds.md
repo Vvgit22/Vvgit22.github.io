@@ -7,13 +7,15 @@ period: 'October 2026 – present'
 role: 'Project Manager (7-member team)'
 team: 'Imperial year-long group project, supervised by Prof Simon Schultz'
 tags: [Python, fMRI, manifold learning, information theory]
-thumbnail: /thumbs/neural-manifolds.svg
+links:
+  demo: /manifold/
+thumbnail: /thumbs/neural-manifolds.webp
 order: 4
 ---
 
 ## Problem
 
-Finding biomarkers of Alzheimer's disease in brain activity means finding low-dimensional structure in very high-dimensional recordings — and doing it in human data, not models.
+Finding biomarkers of Alzheimer's disease in brain activity means finding low-dimensional structure in very high-dimensional recordings — here in human fMRI data.
 
 ## What I built
 

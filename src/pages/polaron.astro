@@ -1,0 +1,266 @@
+---
+import Base from '../layouts/Base.astro';
+import CompareSlider from '../components/CompareSlider.astro';
+
+const slides = [
+  'Do new anode batches match the approved one?',
+  'How the algorithm works',
+  'How we segment the images',
+  'The markers that matter — and what we can conclude',
+  'What these markers look like',
+  'The key measurements, photo by photo',
+  'Results by batch — and the next decision',
+];
+
+const evalRows = [
+  ['img_0eryguqq', 'Batch_3', 'yes — could be session-matched', 'all three scorers agree'],
+  ['img_4hq27w4c', 'Batch_1', 'no', 'the one clean call (9/9 features inside B1 envelope)'],
+  ['img_fhwrjtet', 'Batch_3', 'yes', 'methods disagree — weak call'],
+  ['img_fspqbkxl', 'inconclusive (B1/B2)', 'no', "honestly can't tell — batches overlap"],
+  ['img_soo2ax3r', 'inconclusive (B1/B3)', 'no', "honestly can't tell"],
+  ['img_y59rxmxl', 'inconclusive (B1/B3)', 'yes', 'problem photo — low contrast, Si undercount risk'],
+];
+---
+
+<Base
+  title="Electrode batch QC from SEM images — demo"
+  description="Interactive walkthrough of the 48-hour SEM/BSE electrode batch-comparison pipeline."
+>
+  <p class="mb-4 text-sm">
+    <a href="/projects/polaron/" class="text-accent underline-offset-2 hover:underline"
+      >&larr; Back to project</a
+    >
+  </p>
+
+  <h1 class="mb-2 text-2xl font-bold">Electrode batch QC from SEM images</h1>
+  <p class="mb-3 text-neutral-700">
+    Can a new batch of electrode material be told apart from the approved one
+    from SEM images alone? After 48 hours: <strong>not yet</strong> — and here
+    is exactly why.
+  </p>
+  <div class="mb-10 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+    All numbers on this page come from the hackathon repository (RESULTS.md,
+    eval6/). Nothing has been re-run for this site.
+  </div>
+
+  <section class="mb-10">
+    <h2 class="mb-3 text-lg font-semibold">What the segmentation sees</h2>
+    <div class="space-y-6">
+      <CompareSlider
+        before="/polaron/assets/seg_original.webp"
+        after="/polaron/assets/seg_overlay.webp"
+        label="Whole field: raw vs segmentation"
+      />
+      <CompareSlider
+        before="/polaron/assets/closeup_original.webp"
+        after="/polaron/assets/closeup_overlay.webp"
+        label="Close-up: raw vs segmentation"
+      />
+    </div>
+    <p class="mt-2 text-sm text-neutral-600">
+      Raw BSE cross-section &harr; multi-Otsu segmentation overlay (pore,
+      graphite, silicon, uncertain bright). Drag the handle or use arrow keys.
+    </p>
+  </section>
+
+  <section class="mb-10">
+    <h2 class="mb-3 text-lg font-semibold">The pipeline, in seven slides</h2>
+    <div class="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2">
+      {
+        slides.map((title, i) => (
+          <figure class="w-64 shrink-0 snap-start">
+            <img
+              src={`/polaron/slides/slide-${i + 1}.webp`}
+              alt={title}
+              width="640"
+              height="360"
+              loading="lazy"
+              class="rounded border border-neutral-200"
+            />
+            <figcaption class="mt-1 text-xs text-neutral-600">
+              {i + 1}. {title}
+            </figcaption>
+          </figure>
+        ))
+      }
+    </div>
+    <p class="mt-2 text-sm">
+      <a
+        href="https://github.com/Vvgit22/Polaron-SEM-Prediction-Algorithm/blob/hackathon-polaron-work/Hackathon-Polaron/teamjester_deck/TeamJester_Algorithm_Overview.pdf"
+        class="text-accent underline-offset-2 hover:underline"
+        >Full deck (PDF) on GitHub</a
+      >
+    </p>
+  </section>
+
+  <section class="mb-10">
+    <h2 class="mb-3 text-lg font-semibold">Feature explorer</h2>
+    <p class="mb-3 text-sm text-neutral-600">
+      One dot per photo, one row per batch, median marked. Data:
+      <code>features.csv</code> from the repo.
+    </p>
+    <label class="mb-4 block text-sm">
+      Feature:
+      <select id="feature-select" class="ml-2 rounded border border-neutral-300 px-2 py-1">
+      </select>
+    </label>
+    <div id="feature-plot" class="overflow-x-auto"></div>
+    <p id="feature-meta" class="mt-1 text-xs text-neutral-500"></p>
+  </section>
+
+  <section class="mb-10">
+    <h2 class="mb-3 text-lg font-semibold">Blind evaluation on 6 never-seen images</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-sm">
+        <thead>
+          <tr class="border-b border-neutral-300 text-left">
+            <th class="py-1.5 pr-4 font-medium">image</th>
+            <th class="py-1.5 pr-4 font-medium">envelope pick</th>
+            <th class="py-1.5 pr-4 font-medium">session-confound flag</th>
+            <th class="py-1.5 font-medium">notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            evalRows.map((r) => (
+              <tr class="border-b border-neutral-100">
+                <td class="py-1.5 pr-4 font-mono text-xs">{r[0]}</td>
+                <td class="py-1.5 pr-4">{r[1]}</td>
+                <td class="py-1.5 pr-4">{r[2]}</td>
+                <td class="py-1.5">{r[3]}</td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="mt-3 text-sm text-neutral-700">
+      Predictions were hash-locked before labels were released. On the labels
+      later confirmed by the organiser the score was 0/2; both wrong calls
+      matched the photo's imaging session, the confound the pipeline had
+      already flagged.
+    </p>
+    <p class="mt-2 text-sm">
+      <a
+        href="https://github.com/Vvgit22/Polaron-SEM-Prediction-Algorithm/blob/hackathon-polaron-work/Hackathon-Polaron/eval6/REPORT.md"
+        class="text-accent underline-offset-2 hover:underline"
+        >eval6/REPORT.md on GitHub</a
+      >
+    </p>
+  </section>
+
+  <section class="mb-10">
+    <h2 class="mb-3 text-lg font-semibold">Full results</h2>
+    <a
+      href="/polaron/results/"
+      class="inline-block rounded-lg bg-accent px-5 py-2.5 font-semibold text-white hover:bg-green-900"
+      >Open the full RESULTS page</a
+    >
+  </section>
+
+  <section class="mb-4">
+    <h2 class="mb-3 text-lg font-semibold">Video</h2>
+    <div class="rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-6 text-center text-sm text-neutral-600">
+      Two-minute pitch — coming here
+    </div>
+  </section>
+
+  <script>
+    interface Row { [key: string]: string }
+    const BATCH_KEY = 'batch';
+    const ID_KEY = 'image_id';
+
+    function median(xs: number[]): number {
+      const s = [...xs].sort((a, b) => a - b);
+      const m = Math.floor(s.length / 2);
+      return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+    }
+
+    fetch('/polaron/features.csv')
+      .then((r) => r.text())
+      .then((text) => {
+        const lines = text.trim().split(/\r?\n/);
+        const header = lines[0].split(',');
+        const rows: Row[] = lines.slice(1).map((l) => {
+          const cells = l.split(',');
+          const o: Row = {};
+          header.forEach((h, i) => (o[h] = cells[i] ?? ''));
+          return o;
+        });
+
+        const numericCols = header.filter(
+          (h) =>
+            h !== BATCH_KEY &&
+            h !== ID_KEY &&
+            h !== 'path' &&
+            rows.every((r) => r[h] !== '' && !isNaN(Number(r[h]))),
+        );
+
+        const batches = [...new Set(rows.map((r) => r[BATCH_KEY]))].sort();
+        const select = document.getElementById('feature-select') as HTMLSelectElement;
+        numericCols.forEach((c) => {
+          const opt = document.createElement('option');
+          opt.value = c;
+          opt.textContent = c;
+          select.appendChild(opt);
+        });
+        const preferred = numericCols.indexOf('pore_frac');
+        select.selectedIndex = preferred >= 0 ? preferred : 0;
+
+        const plot = document.getElementById('feature-plot')!;
+        const meta = document.getElementById('feature-meta')!;
+
+        function render() {
+          const col = select.value;
+          const all = rows.map((r) => Number(r[col]));
+          const lo = Math.min(...all);
+          const hi = Math.max(...all);
+          const pad = (hi - lo || 1) * 0.05;
+          const x0 = lo - pad;
+          const x1 = hi + pad;
+          const W = 680;
+          const rowH = 34;
+          const topPad = 24;
+          const H = topPad + batches.length * rowH + 16;
+          const x = (v: number) => ((v - x0) / (x1 - x0)) * (W - 110) + 100;
+          const colors = ['#0e6b3d', '#2563eb', '#b45309'];
+
+          const parts: string[] = [];
+          // ticks
+          for (let i = 0; i <= 4; i++) {
+            const v = x0 + ((x1 - x0) * i) / 4;
+            const px = x(v);
+            parts.push(
+              `<line x1="${px}" y1="${topPad - 8}" x2="${px}" y2="${H - 10}" stroke="#e5e5e5"/>`,
+              `<text x="${px}" y="${topPad - 12}" font-size="10" fill="#737373" text-anchor="middle">${v.toPrecision(3)}</text>`,
+            );
+          }
+          batches.forEach((b, bi) => {
+            const cy = topPad + bi * rowH + rowH / 2;
+            const vals = rows
+              .filter((r) => r[BATCH_KEY] === b)
+              .map((r) => Number(r[col]));
+            const med = median(vals);
+            parts.push(
+              `<text x="95" y="${cy + 3}" font-size="11" fill="#404040" text-anchor="end">${b} (n=${vals.length})</text>`,
+            );
+            vals.forEach((v, i) => {
+              const jx = ((i % 5) - 2) * 2;
+              const jy = (((i * 7) % 5) - 2) * 2.5;
+              parts.push(
+                `<circle cx="${x(v) + jx}" cy="${cy + jy}" r="4" fill="${colors[bi % colors.length]}" fill-opacity="0.55" stroke="${colors[bi % colors.length]}"/>`,
+              );
+            });
+            parts.push(
+              `<line x1="${x(med)}" y1="${cy - 9}" x2="${x(med)}" y2="${cy + 9}" stroke="#171717" stroke-width="2.5"/>`,
+            );
+          });
+          plot.innerHTML = `<svg viewBox="0 0 ${W} ${H}" class="w-full" role="img" aria-label="Strip plot of ${col} by batch">${parts.join('')}</svg>`;
+          meta.textContent = `n = ${rows.length} photos across ${batches.length} batches; only the median is computed.`;
+        }
+
+        select.addEventListener('change', render);
+        render();
+      });
+  </script>
+</Base>

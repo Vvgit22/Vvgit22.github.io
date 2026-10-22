@@ -1,0 +1,75 @@
+---
+interface Props {
+  before: string;
+  after: string;
+  label: string;
+}
+const { before, after, label } = Astro.props;
+---
+
+<div
+  class="compare-slider relative select-none overflow-hidden rounded border border-neutral-200"
+  data-label={label}
+>
+  <img src={before} alt={label} width="1200" height="675" loading="lazy" class="block w-full" draggable="false" />
+  <div class="overlay absolute inset-0" style="clip-path: inset(0 50% 0 0)">
+    <img src={after} alt="" width="1200" height="675" loading="lazy" class="block h-full w-full object-cover" draggable="false" />
+  </div>
+  <div
+    class="handle absolute top-0 h-full w-0.5 bg-white shadow-[0_0_4px_rgba(0,0,0,0.6)]"
+    style="left: 50%"
+  >
+    <div
+      class="knob absolute top-1/2 -ml-3.5 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-neutral-300 bg-white text-xs text-neutral-700 shadow"
+      role="slider"
+      tabindex="0"
+      aria-label={label}
+      aria-valuemin="0"
+      aria-valuemax="100"
+      aria-valuenow="50"
+    >
+      &harr;
+    </div>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll<HTMLElement>('.compare-slider').forEach((el) => {
+    const overlay = el.querySelector<HTMLElement>('.overlay')!;
+    const handle = el.querySelector<HTMLElement>('.handle')!;
+    const knob = el.querySelector<HTMLElement>('.knob')!;
+    let pct = 50;
+
+    function set(p: number) {
+      pct = Math.max(0, Math.min(100, p));
+      overlay.style.clipPath = `inset(0 ${100 - pct}% 0 0)`;
+      handle.style.left = pct + '%';
+      knob.setAttribute('aria-valuenow', String(Math.round(pct)));
+    }
+
+    function fromEvent(e: PointerEvent) {
+      const r = el.getBoundingClientRect();
+      set(((e.clientX - r.left) / r.width) * 100);
+    }
+
+    let dragging = false;
+    el.addEventListener('pointerdown', (e) => {
+      dragging = true;
+      el.setPointerCapture(e.pointerId);
+      fromEvent(e);
+    });
+    el.addEventListener('pointermove', (e) => dragging && fromEvent(e));
+    el.addEventListener('pointerup', () => (dragging = false));
+    el.addEventListener('pointercancel', () => (dragging = false));
+
+    knob.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') {
+        set(pct - 5);
+        e.preventDefault();
+      } else if (e.key === 'ArrowRight') {
+        set(pct + 5);
+        e.preventDefault();
+      }
+    });
+  });
+</script>

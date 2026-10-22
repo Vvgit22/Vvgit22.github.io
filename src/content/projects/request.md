@@ -9,7 +9,8 @@ team: '8-member Imperial group project (BME Group 12)'
 tags: [Python, FastAPI, Bluetooth LE, pygame, HTML/JS]
 links:
   repo: https://github.com/Vvgit22/ReQuest-Physiotherapy
-thumbnail: /thumbs/request.svg
+  demo: /request/
+thumbnail: /thumbs/request.webp
 order: 1
 ---
 
@@ -29,4 +30,4 @@ The software is a Bluetooth-driven game built in pygame, plus a patient app and 
 
 ## What this does and does not show
 
-The prototype runs on in-memory demo data that resets on refresh. The hardware is not in the browser — the wristbands and resistance band were built by the team. This was a group project: the hardware and bands were built by the team, and the software was built by me.
+The prototype runs on in-memory demo data that resets on refresh, and the hardware is not in the browser. This was a group project: the wristbands and bands were built by the team; the software — game, patient app, dashboard and backend — was built by me.

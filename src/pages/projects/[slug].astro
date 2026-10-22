@@ -15,8 +15,9 @@ const { project } = Astro.props;
 const { data } = project;
 const { Content } = await render(project);
 
+const hasDemo = Boolean(data.links?.demo);
 const demoPending =
-  !data.links?.demo && (data.status === 'live' || data.status === 'video');
+  !hasDemo && (data.status === 'live' || data.status === 'video');
 ---
 
 <Base title={`${data.title} — Vadim Vadanici`} description={data.summary}>
@@ -58,10 +59,36 @@ const demoPending =
     )}
   </header>
 
+  {hasDemo && (
+    <a
+      href={data.links!.demo}
+      class="mb-8 inline-block rounded-lg bg-accent px-5 py-2.5 font-semibold text-white hover:bg-green-900"
+    >
+      Open the demo &rarr;
+    </a>
+  )}
+
   {demoPending && (
     <div class="mb-8 rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-6 text-center text-sm text-neutral-600">
       Demo coming to this page.
     </div>
+  )}
+
+  {project.id === 'request' && hasDemo && (
+    <section class="mb-8">
+      <p class="mb-2 text-sm text-neutral-600">
+        Demo login inside; data is in-memory and resets on refresh.{' '}
+        <a href="/request/" class="text-accent underline-offset-2 hover:underline">
+          Open full screen
+        </a>
+      </p>
+      <iframe
+        src="/request/"
+        loading="lazy"
+        title="ReQuest prototype"
+        class="h-[760px] w-full rounded-lg border border-neutral-300"
+      />
+    </section>
   )}
 
   <article class="prose-portfolio">

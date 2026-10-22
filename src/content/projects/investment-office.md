@@ -6,7 +6,9 @@ statusLabel: 'Live demo'
 period: 'August 2026 – present'
 role: 'Sole author'
 tags: [Python, SQLite, HTML, yfinance]
-thumbnail: /thumbs/investment-office.svg
+links:
+  demo: /portfolio-office/
+thumbnail: /thumbs/investment-office.webp
 order: 5
 ---
 
