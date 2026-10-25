@@ -30,7 +30,3 @@ The browser prototype includes a patient app — Mission Control, Journey, Feed,
 ## How it works
 
 The software is a Bluetooth-driven game built in pygame, plus a patient app and clinician dashboard on a FastAPI backend. I was the sole developer of the software on an 8-member Imperial group project; the team won the Year 2 Biomedical Engineering Prize for Best Group Project.
-
-## What this does and does not show
-
-The prototype runs on in-memory demo data that resets on refresh, and the hardware is not in the browser. This was a group project: the wristbands and bands were built by the team; the software — game, patient app, dashboard and backend — was built by me.

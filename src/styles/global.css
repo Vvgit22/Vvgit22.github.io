@@ -90,35 +90,3 @@ h1 {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.9em;
 }
-
-/* The final "What this does and does not show" section is always the last
-   h2 in every project file — render it as a visible callout box. */
-.prose-body > h2:last-of-type,
-.prose-body > h2:last-of-type ~ * {
-  background: var(--callout-bg, #f4f4f2);
-  border-left: 1px solid var(--hairline, #e6e8eb);
-  border-right: 1px solid var(--hairline, #e6e8eb);
-  padding-left: 1rem;
-  padding-right: 1rem;
-}
-
-.prose-body > h2:last-of-type {
-  border-top: 1px solid var(--hairline, #e6e8eb);
-  border-radius: 10px 10px 0 0;
-  padding-top: 0.75rem;
-  margin-bottom: 0;
-}
-
-.prose-body > h2:last-of-type ~ :last-child {
-  border-bottom: 1px solid var(--hairline, #e6e8eb);
-  border-radius: 0 0 10px 10px;
-  padding-bottom: 0.75rem;
-}
-
-@media (prefers-color-scheme: dark) {
-  .prose-body > h2:last-of-type,
-  .prose-body > h2:last-of-type ~ * {
-    --callout-bg: #16191d;
-    --hairline: #262a2f;
-  }
-}

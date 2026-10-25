@@ -22,8 +22,4 @@ A private research-and-monitoring system that analyses, documents and proposes. 
 
 ## How it works
 
-A 16-table SQLite database with an append-only ledger enforced at the database level; a calculation engine verified by 11 checks against a hand-worked ledger; a price and FX layer fed by yfinance; a self-contained offline HTML dashboard with no external resources and no tracking; and one-click .command launchers for the daily refresh.
-
-## What this does and does not show
-
-The demo dashboard is built from a fictional ledger — no real holdings, notes or prices-as-held are shown.
+A 16-table SQLite database with an append-only ledger enforced at the database level; a calculation engine verified by 11 checks against a hand-worked ledger; a price and FX layer fed by yfinance; a self-contained offline HTML dashboard with no external resources and no tracking; and one-click .command launchers for the daily refresh. The demo dashboard runs on a fictional ledger.

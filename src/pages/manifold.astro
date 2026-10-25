@@ -10,7 +10,7 @@ import DemoHeader from '../components/DemoHeader.astro';
   <DemoHeader
     backHref="/projects/neural-manifolds/"
     title="A neural manifold, illustrated"
-    banner="Illustration on synthetic data generated in your browser — simulated fMRI-like signals, not real brain data. No PREVENT Dementia data and no Schultz Lab results are shown."
+    banner="Synthetic data generated in the browser. No PREVENT Dementia data or Schultz Lab results are shown."
     tone="blue"
   />
 
@@ -77,8 +77,8 @@ import DemoHeader from '../components/DemoHeader.astro';
         Although there are 48 signals, the right panel keeps only their three
         strongest shared directions (PCA): the activity still traces a tight
         loop, because the regions are not independent — they all read the same
-        few latent variables. Raise the noise and the explained variance drops;
-        the shape unravels.
+        few latent variables. Increasing the noise lowers the explained
+        variance and unravels the shape.
       </p>
       <p>
         In the real project the equivalent question is asked of PREVENT

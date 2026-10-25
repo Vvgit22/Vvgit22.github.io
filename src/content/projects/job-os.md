@@ -20,8 +20,4 @@ A personal single-user system. Source adapters for Greenhouse, Lever, Workday, B
 
 ## How it works
 
-The score is a weighted sum of five dimensions — eligibility 0.20, work criteria 0.15, interest 0.35, experience fit 0.10, technical fit 0.20. An unmeasurable dimension is dropped and the weights renormalise; a hard eligibility blocker caps the score. For cover letters, the model may select, reorder, compress and rephrase verified facts but never introduce one — enforced by a provenance guard with four checks (citation, numeric, lexical, company). A failing passage is rejected and replaced by approved text, never silently repaired. It runs on embedded Postgres (PGlite) with no server install, Zod at every boundary, and vitest plus Playwright tests.
-
-## What this does and does not show
-
-Job OS is private and single-user — there is no live instance, and the video runs on seeded data, not my real applications.
+The score is a weighted sum of five dimensions — eligibility 0.20, work criteria 0.15, interest 0.35, experience fit 0.10, technical fit 0.20. An unmeasurable dimension is dropped and the weights renormalise; a hard eligibility blocker caps the score. For cover letters, the model may select, reorder, compress and rephrase verified facts but never introduce one — enforced by a provenance guard with four checks (citation, numeric, lexical, company). A failing passage is rejected and replaced by approved text, never silently repaired. It runs on embedded Postgres (PGlite) with no server install, Zod at every boundary, and vitest plus Playwright tests. Job OS is private and single-user.

@@ -23,8 +23,4 @@ A year-long Imperial group project — the lab's first on human fMRI — applyin
 
 ## How it works
 
-We are refining MIMI, an information-theoretic method that infers low-dimensional structure in brain activity, and analysing how default-mode-network manifolds change with age across participants to find candidate Alzheimer's biomarkers.
-
-## What this does and does not show
-
-Both interactive illustrations on this page — the simulated fMRI-like signals and the Swiss-roll — run on synthetic data generated in your browser. No PREVENT Dementia data and no Schultz Lab results are shown. The project started in October 2026; there are no results yet.
+We are refining MIMI, an information-theoretic method that infers low-dimensional structure in brain activity, and analysing how default-mode-network manifolds change with age across participants to find candidate Alzheimer's biomarkers. The interactive illustration on the demo page runs on synthetic data generated in the browser.

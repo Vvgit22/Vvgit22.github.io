@@ -2,7 +2,7 @@
 interface Props {
   backHref?: string;
   title: string;
-  banner: string;
+  banner?: string;
   tone?: 'amber' | 'blue' | 'green';
 }
 
@@ -21,11 +21,10 @@ const tones: Record<string, string> = {
 </p>
 <h1 class="mb-2">{title}</h1>
 <slot />
-<div
-  class:list={[
-    'mb-10 rounded-lg border p-4 text-sm',
-    tones[tone],
-  ]}
->
-  {banner}
-</div>
+{
+  banner && (
+    <div class:list={['mb-10 rounded-lg border p-4 text-sm', tones[tone]]}>
+      {banner}
+    </div>
+  )
+}
