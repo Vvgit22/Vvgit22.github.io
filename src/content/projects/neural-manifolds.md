@@ -6,11 +6,11 @@ statusLabel: 'In progress'
 period: 'October 2026 – present'
 role: 'Project Manager (7-member team)'
 team: 'Imperial year-long group project, supervised by Prof Simon Schultz'
-tags: [Python, fMRI, manifold learning, information theory]
+tags: [Python, fMRI, PCA, manifold learning, information theory]
 links:
   demo: /manifold/
 thumbnail: /thumbs/neural-manifolds.webp
-order: 4
+order: 3
 ---
 
 ## Problem

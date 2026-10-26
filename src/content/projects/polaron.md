@@ -1,6 +1,6 @@
 ---
-title: 'Electrode batch QC from SEM images'
-summary: 'Segmentation and statistical comparison of battery-electrode SEM cross-sections to detect batch-to-batch change in material.'
+title: 'Battery quality control from microscope images'
+summary: 'Does a new batch of battery-electrode material match the approved one? A pipeline that answers from SEM images alone, before any cells are built.'
 status: live
 statusLabel: 'Live demo'
 period: 'October 2026 (48-hour hackathon)'

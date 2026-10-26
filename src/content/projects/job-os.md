@@ -1,13 +1,13 @@
 ---
-title: 'Job OS: a job-search engine that cannot invent a claim'
-summary: 'A personal job-search system that scores postings deterministically and generates cover letters a provenance guard stops from inventing facts.'
+title: 'Job OS: a custom job-search engine'
+summary: 'A personal job-search system that discovers postings across applicant-tracking systems, scores them deterministically and drafts cover letters from verified facts.'
 status: video
 statusLabel: 'Video'
 period: '2026 – present'
 role: 'Sole author'
 tags: [TypeScript, Next.js 16, Drizzle ORM, Postgres/PGlite, Zod, Playwright]
 thumbnail: /thumbs/job-os.webp
-order: 3
+order: 4
 ---
 
 ## Problem
