@@ -16,11 +16,11 @@ links:
 ## Problem
 
 A wristband that reads electrical activity from forearm muscles can steer a
-cursor, a prosthesis or a drone — but only if the decoder still works when
+cursor, a prosthesis or a drone, but only if the decoder still works when
 conditions change: a new day, a new placement of the electrodes, or a person
-it has never met. Most published numbers answer the easy version of the
-question, scored on windows drawn from the same recording the model trained
-on.
+it has never met. The easy version of the
+question scores the model on windows drawn from the same recording it
+trained on; this project asks the hard versions too.
 
 ## What I built
 
@@ -33,8 +33,8 @@ recordings.
 
 ## How it works
 
-Three split designs ask three different questions — same session, a different
-day, and a person the model has never seen — and the grouping is asserted
+Three split designs ask three different questions, same session, a different
+day, and a person the model has never seen, and the grouping is asserted
 programmatically before every fit so a near-duplicate window can never slip
 into the test side. The network is deliberately small and its normalisation
 statistics live inside the exported graph, so the browser receives a single

@@ -23,15 +23,40 @@ const m = demoMeta.models as Record<
   { accuracy_on_demo_clips: number; split_test_accuracy: number }
 >;
 const pct = (x: number) => (x * 100).toFixed(1);
+
+// "Which gestures are hard" is rendered from the results JSON, not from
+// pre-rendered figures, so every bar and cell is legible at page width.
+const cs = (cells as any).cnn.both.cross_subject;
+const f1Rows = demoMeta.classes
+  .map((name, i) => ({ name, f1: cs.per_class_f1[i] }))
+  .sort((a, b) => b.f1 - a.f1);
+const worst3 = f1Rows.slice(-3);
+const cm = cs.confusion as number[][];
+const rowNorm = cm.map((row) => {
+  const t = row.reduce((a, b) => a + b, 0);
+  return row.map((v) => v / t);
+});
+let maxOff = { p: 0, t: 0, pr: 0 };
+rowNorm.forEach((row, t) =>
+  row.forEach((p, pr) => {
+    if (t !== pr && p > maxOff.p) maxOff = { p, t, pr };
+  }),
+);
+const windowRows = (['cnn_w64', 'cnn_w128', 'cnn'] as const).map((model) => ({
+  label: { cnn: '250 ms', cnn_w128: '125 ms', cnn_w64: '62.5 ms' }[model],
+  cd: (cells as any)[model].both.cross_day,
+  cx: (cells as any)[model].both.cross_subject,
+}));
+const cnnWS = (cells as any).cnn.both.within_subject.accuracy_mean;
 ---
 
 <Base
-  title="EMG gesture decoder — live demo"
+  title="EMG gesture decoder, live demo"
   description="Two small neural networks decoding 17 hand gestures from real held-out EMG recordings, running in your browser with ONNX Runtime."
 >
   <DemoHeader
     backHref="/projects/emg-decoder/"
-    title="EMG gesture decoder — live in your browser"
+    title="EMG gesture decoder, live in your browser"
     banner="Real held-out recordings from the open GrabMyo dataset (subject 1, day 1, trial 6), used in training by neither model. Both networks run in your browser with ONNX Runtime."
     tone="blue"
   />
@@ -87,7 +112,10 @@ const pct = (x: number) => (x * 100).toFixed(1);
                 ? 'within-subject split (seen.onnx)'
                 : 'cross-subject fold (unseen.onnx)'}
             </p>
-            <div id={`emg-grid-${k}`} class="mb-3 grid grid-cols-6 gap-1" />
+            <div id={`emg-grid-${k}`} class="mb-1 grid grid-cols-6 gap-1" />
+            <p class="mb-2 text-[11px] text-neutral-500">
+              outlined = true gesture, green = correct, red = wrong
+            </p>
             <div id={`emg-bars-${k}`} class="mb-2 space-y-1" />
             <p id={`emg-tally-${k}`} class="text-xs tabular-nums text-neutral-600">
               correct windows: 0 / 0
@@ -98,11 +126,17 @@ const pct = (x: number) => (x * 100).toFixed(1);
     </div>
 
     <p class="mt-3 text-sm text-neutral-600">
-      On these 255 clips the seen model scores
-      {' '}{pct(m.seen.accuracy_on_demo_clips)}% and the unseen model
-      {' '}{pct(m.unseen.accuracy_on_demo_clips)}%; on their full test sets
-      {' '}{pct(m.seen.split_test_accuracy)}% and
+      On the 255 windows in these 17 clips, the model that trained on this
+      person scores {pct(m.seen.accuracy_on_demo_clips)}% and the model that
+      never saw them {pct(m.unseen.accuracy_on_demo_clips)}%; on their full
+      held-out test sets, {pct(m.seen.split_test_accuracy)}% and
       {' '}{pct(m.unseen.split_test_accuracy)}%.
+    </p>
+    <p class="mt-2 text-sm text-neutral-600">
+      Subject 1 was chosen as the demo person before any model was trained;
+      on this one person the two models happen to land close together, while
+      across all 43 people the gap is {pct(cnnWS)}% against
+      {' '}{pct(cnnCS)}%.
     </p>
     <p id="emg-error" class="mt-2 hidden rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
       The in-browser runtime could not load; the results below are unaffected.
@@ -112,7 +146,7 @@ const pct = (x: number) => (x * 100).toFixed(1);
   <section class="mb-12">
     <h2 class="mb-4 text-xl font-semibold">Results</h2>
     <EmgResults />
-    <p class="max-w-prose text-sm leading-relaxed text-neutral-700">
+    <p class="mt-6 max-w-prose text-sm leading-relaxed text-neutral-700">
       When the model already knows the person, a neural network buys nothing
       over a classical classifier: both sit at 93%. The harder the question,
       the more the network wins: +2 points on a new day, +12 points on a
@@ -126,56 +160,110 @@ const pct = (x: number) => (x * 100).toFixed(1);
 
   <section class="mb-12">
     <h2 class="mb-4 text-xl font-semibold">Window length</h2>
-    <img
-      width="624" height="384"
-      src="/emg/figures/ablation_window_length.svg"
-      alt="Accuracy versus window length for cross-day and cross-subject splits"
-      class="max-w-xl"
-    />
+    <table class="w-full max-w-md text-sm">
+      <thead>
+        <tr class="border-b border-neutral-200 text-left text-neutral-500">
+          <th class="py-1 pr-4 font-medium">Window</th>
+          <th class="py-1 pr-4 font-medium">cross-day</th>
+          <th class="py-1 pr-4 font-medium">cross-subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        {windowRows.map((r) => (
+          <tr class="border-b border-neutral-100">
+            <td class="py-1 pr-4">{r.label}</td>
+            <td class="py-1 pr-4 tabular-nums">
+              {pct(r.cd.accuracy_mean)} ± {(r.cd.accuracy_std * 100).toFixed(1)}
+            </td>
+            <td class="py-1 pr-4 tabular-nums">
+              {pct(r.cx.accuracy_mean)} ± {(r.cx.accuracy_std * 100).toFixed(1)}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
     <p class="mt-3 max-w-prose text-sm leading-relaxed text-neutral-700">
       Cutting the analysis window from 250 ms to 125 ms costs about a point
       and a half of accuracy; dropping to 62.5 ms costs three to six. Most of
       the gesture's information is in the first fraction of the contraction,
-      but the tail still helps — and windows longer than 250 ms cannot be
+      but the tail still helps, and windows longer than 250 ms cannot be
       tested here because the recordings are only stored at that length.
     </p>
   </section>
 
   <section class="mb-12">
     <h2 class="mb-4 text-xl font-semibold">Which gestures are hard</h2>
-    <div class="grid gap-6 lg:grid-cols-2">
-      <img
-        width="960" height="384"
-        src="/emg/figures/per_class_f1_cnn_both_cross_subject.svg"
-        alt="Per-class F1 of the CNN on unseen subjects"
-      />
-      <img
-        width="864" height="768"
-        src="/emg/figures/confusion_cnn_both_cross_subject.svg"
-        alt="Row-normalised confusion matrix of the CNN on unseen subjects"
-      />
+    <h3 class="mb-2 text-base font-semibold">Per-class F1, never-seen people</h3>
+    <ul class="mb-8 max-w-2xl space-y-1">
+      {f1Rows.map((r) => (
+        <li class="flex items-center gap-3 text-sm">
+          <span class="w-64 shrink-0">{r.name}</span>
+          <span
+            class="h-3 rounded bg-accent"
+            style={`width:${(r.f1 * 300).toFixed(0)}px`}
+          />
+          <span class="ml-auto tabular-nums text-neutral-600">
+            {(r.f1 * 100).toFixed(1)}%
+          </span>
+        </li>
+      ))}
+    </ul>
+    <h3 class="mb-2 text-base font-semibold">Confusion matrix, never-seen people</h3>
+    <div class="overflow-x-auto">
+      <table class="border-collapse text-[10px]">
+        <tbody>
+          {rowNorm.map((row, t) => (
+            <tr>
+              <td class="whitespace-nowrap pr-2 text-right text-neutral-600">
+                {demoMeta.classes[t]}
+              </td>
+              {row.map((p, pr) => (
+                <td
+                  class="h-6 w-6 border border-white text-center"
+                  style={`background: rgb(22 101 52 / ${(0.08 + 0.92 * p).toFixed(3)})`}
+                  title={`True ${demoMeta.classes[t]} -> predicted ${demoMeta.classes[pr]}: ${cm[t][pr]} windows (${(p * 100).toFixed(1)}%)`}
+                  aria-label={`True ${demoMeta.classes[t]}, predicted ${demoMeta.classes[pr]}: ${(p * 100).toFixed(1)} percent`}
+                >
+                  {t === pr ? '' : p >= 0.05 ? Math.round(p * 100) : ''}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p class="mt-1 text-xs text-neutral-500">
+        Rows = true gesture, columns = predicted gesture, same order as the
+        rows. Colour intensity = fraction of the true row.
+      </p>
     </div>
+    <p class="mt-4 max-w-prose text-sm leading-relaxed text-neutral-700">
+      The three hardest gestures are
+      {' '}{worst3.map((r) => `${r.name} (${(r.f1 * 100).toFixed(1)}%)`).join(', ')}.
+      The single most frequent mistake is reading
+      {' '}{demoMeta.classes[maxOff.t]} as {demoMeta.classes[maxOff.pr]}
+      {' '}({(maxOff.p * 100).toFixed(1)}% of its windows).
+    </p>
   </section>
 
   <section class="mb-12">
     <h2 class="mb-4 text-xl font-semibold">How the data was split</h2>
     <ul class="max-w-prose list-disc space-y-2 pl-5 text-sm leading-relaxed text-neutral-700">
       <li>
-        <strong>Within-subject</strong> — one person's repetitions 1–4 train
+        <strong>Within-subject</strong>: one person's repetitions 1–4 train
         the model, repetitions 6–7 test it, same day.
       </li>
       <li>
-        <strong>Cross-day</strong> — days 1–2 train, day 3 tests, same person:
+        <strong>Cross-day</strong>: days 1–2 train, day 3 tests, same person.
         the sensor has been taken off and put back on.
       </li>
       <li>
-        <strong>Cross-subject</strong> — whole people are held out: the model
+        <strong>Cross-subject</strong>: whole people are held out; the model
         is tested only on arms it has never seen.
       </li>
     </ul>
     <p class="mt-3 max-w-prose text-sm leading-relaxed text-neutral-700">
-      Before every training run, a check asserts that no window's group — the
-      same repetition, day or person — appears on both sides of the split;
+      Before every training run, a check asserts that no window's group, the
+      same repetition, day or person, appears on both sides of the split;
       the same checks run as tests.
     </p>
   </section>
@@ -232,7 +320,7 @@ make reproduce-full # adds cross-subject sweeps and ablations</pre>
   let sessions: Record<string, any> | null = null;
   let ort: any = null;
   let playing = false, pos = 0, nextInfer = 0, lastAnnounce = 0;
-  // ORT wasm sessions cannot run concurrently — serialise inferences.
+  // ORT wasm sessions cannot run concurrently; serialise inferences.
   let inferQueue: Promise<void> = Promise.resolve();
   const tally: Record<string, { c: number; n: number }> = {
     seen: { c: 0, n: 0 }, unseen: { c: 0, n: 0 },
@@ -258,7 +346,14 @@ make reproduce-full # adds cross-subject sweeps and ablations</pre>
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = '#0b1020';
     ctx.fillRect(0, 0, W, H);
-    if (!clips) return;
+    if (!clips) {
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.font = '14px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText('28 EMG channels; press Play to stream a recording',
+                   W / 2, H / 2);
+      return;
+    }
     const g = Number(gestureSel.value);
     const rowH = H / NC;
     // highlight the current inference window [pos-256, pos]
@@ -294,11 +389,13 @@ make reproduce-full # adds cross-subject sweeps and ablations</pre>
       const isT = i === trueG, isP = i === pred;
       cell.className =
         'flex h-7 items-center justify-center rounded text-[10px] ' +
-        (isP ? (isT ? 'bg-green-600 text-white' : 'bg-red-500 text-white')
+        (isP ? (isT ? 'bg-green-600 text-white ring-2 ring-neutral-800 ring-offset-1'
+                    : 'bg-red-500 text-white')
              : isT ? 'border-2 border-accent'
                    : 'border border-neutral-300 text-neutral-600');
       cell.textContent = String(i + 1);
       cell.title = CLASSES[i];
+      cell.setAttribute('aria-label', CLASSES[i]);
       grid.appendChild(cell);
     }
   }
@@ -418,10 +515,12 @@ make reproduce-full # adds cross-subject sweeps and ablations</pre>
   });
   playBtn.addEventListener('click', async () => {
     if (playing) { pause(); return; }
+    if (!clips) { start(); await clipsReady; if (!clips) return; }
     if (!sessions) { await loadModels(); if (!sessions) return; }
     play();
   });
   nextBtn.addEventListener('click', async () => {
+    if (!clips) { start(); await clipsReady; if (!clips) return; }
     if (!sessions) { await loadModels(); if (!sessions) return; }
     pos = Math.min(SEG, pos + STEP);
     if (pos >= nextInfer) {
@@ -454,6 +553,7 @@ make reproduce-full # adds cross-subject sweeps and ablations</pre>
   }
   let modelsLoading = false;
 
+  let clipsReady: Promise<void> = Promise.resolve();
   async function init() {
     try {
       const [metaRes, binRes] = await Promise.all([
@@ -463,13 +563,12 @@ make reproduce-full # adds cross-subject sweeps and ablations</pre>
       if (meta.scale !== SCALE) throw new Error('demo.json scale mismatch');
       clips = new Int16Array(await binRes.arrayBuffer());
       statusEl.textContent = 'Ready.';
-      for (const el of [playBtn, gestureSel, playAll]) el.disabled = false;
       if (reduced) {
         nextBtn.classList.remove('hidden');
         nextBtn.disabled = false;
         pos = WIN; nextInfer = WIN;
+        draw();
       }
-      draw();
       for (const k of ['seen', 'unseen'] as const) paintGrid(k, 0, null);
     } catch (e) {
       console.error('emg demo init failed', e);
@@ -479,9 +578,14 @@ make reproduce-full # adds cross-subject sweeps and ablations</pre>
   }
   // Load only when needed: on play, or when the canvas scrolls into view.
   let started = false;
-  const start = () => { if (!started) { started = true; init(); } };
-  new IntersectionObserver((es, o) => {
-    if (es.some((e) => e.isIntersecting)) { start(); o.disconnect(); }
-  }).observe(canvas);
+  const start = () => {
+    if (!started) { started = true; clipsReady = init(); }
+  };
+  for (const el of [playBtn, gestureSel, playAll]) el.disabled = false;
+  if (reduced) {
+    new IntersectionObserver((es, o) => {
+      if (es.some((e) => e.isIntersecting)) { start(); o.disconnect(); }
+    }).observe(canvas);
+  }
   draw();
 </script>

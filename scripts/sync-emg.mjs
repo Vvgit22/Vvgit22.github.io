@@ -16,7 +16,6 @@ mkdirSync('src/data', { recursive: true });
 for (const f of ['demo.bin', 'demo.json']) copyFileSync(join(SITE, f), join(OUT, f));
 for (const f of ['seen.onnx', 'seen.meta.json', 'unseen.onnx', 'unseen.meta.json'])
   copyFileSync(join(SITE, 'models', f), join(OUT, 'models', f));
-cpSync(join(SITE, 'figures'), join(OUT, 'figures'), { recursive: true });
 copyFileSync(join(SITE, 'results.json'), 'src/data/emg-results.json');
 copyFileSync(join(SITE, 'demo.json'), 'src/data/emg-demo.json');
 

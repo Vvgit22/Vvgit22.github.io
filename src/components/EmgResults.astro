@@ -29,6 +29,12 @@ function nSplits(cells: Cells, model: string, kind: string) {
   return 0;
 }
 const CONFIGS = ['forearm', 'wrist', 'both'];
+const MODEL_LABEL: Record<string, string> = {
+  lda: 'LDA',
+  cnn: 'CNN',
+  cnn_w128: 'CNN, 125 ms window',
+  cnn_w64: 'CNN, 62.5 ms window',
+};
 const chance = (results.table[0].chance_accuracy * 100).toFixed(1);
 ---
 
@@ -60,7 +66,7 @@ const chance = (results.table[0].chance_accuracy * 100).toFixed(1);
               {models.flatMap((model) =>
                 CONFIGS.filter((c) => cells[model]?.[c]).map((c) => (
                   <tr class="border-b border-neutral-100">
-                    <td class="py-1 pr-4 text-neutral-500">{model}</td>
+                    <td class="py-1 pr-4 text-neutral-500">{MODEL_LABEL[model] ?? model}</td>
                     <td class="py-1 pr-4">{c}</td>
                     {KINDS.map(([k]) => (
                       <td class="py-1 pr-4 tabular-nums">
