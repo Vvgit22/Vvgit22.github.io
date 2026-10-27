@@ -9,7 +9,7 @@ tags: [Python, SQLite, HTML, yfinance]
 links:
   demo: /portfolio-office/
 thumbnail: /thumbs/investment-office.webp
-order: 5
+order: 6
 ---
 
 ## Problem

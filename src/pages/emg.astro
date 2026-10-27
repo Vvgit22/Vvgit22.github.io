@@ -1,0 +1,487 @@
+---
+import Base from '../layouts/Base.astro';
+import DemoHeader from '../components/DemoHeader.astro';
+import EmgResults from '../components/EmgResults.astro';
+import results from '../data/emg-results.json';
+import demoMeta from '../data/emg-demo.json';
+
+// The interpretation paragraph below is approved prose with real numbers in
+// it. Fail the build if the audit table drifts out of the ranges it cites.
+const cells = results.cells as Record<
+  string,
+  Record<string, Record<string, { accuracy_mean: number }>>
+>;
+const cnnCS = cells.cnn.both.cross_subject.accuracy_mean * 100;
+const ldaCS = cells.lda.both.cross_subject.accuracy_mean * 100;
+if (cnnCS < 79 || cnnCS > 80.5)
+  throw new Error(`emg page: cnn cross_subject ${cnnCS}% outside [79, 80.5]`);
+if (ldaCS < 67 || ldaCS > 69)
+  throw new Error(`emg page: lda cross_subject ${ldaCS}% outside [67, 69]`);
+
+const m = demoMeta.models as Record<
+  string,
+  { accuracy_on_demo_clips: number; split_test_accuracy: number }
+>;
+const pct = (x: number) => (x * 100).toFixed(1);
+---
+
+<Base
+  title="EMG gesture decoder — live demo"
+  description="Two small neural networks decoding 17 hand gestures from real held-out EMG recordings, running in your browser with ONNX Runtime."
+>
+  <DemoHeader
+    backHref="/projects/emg-decoder/"
+    title="EMG gesture decoder — live in your browser"
+    banner="Real held-out recordings from the open GrabMyo dataset (subject 1, day 1, trial 6), used in training by neither model. Both networks run in your browser with ONNX Runtime."
+    tone="blue"
+  />
+
+  <section class="mb-12">
+    <div class="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+      <button
+        id="emg-play"
+        class="rounded-lg bg-accent px-4 py-2 font-semibold text-white hover:bg-green-900 disabled:opacity-50"
+        disabled
+      >
+        Play
+      </button>
+      <label class="flex items-center gap-2">
+        Gesture
+        <select id="emg-gesture" class="rounded border border-neutral-300 px-2 py-1" disabled>
+          {demoMeta.classes.map((c, i) => <option value={i}>{c}</option>)}
+        </select>
+      </label>
+      <label class="flex items-center gap-2">
+        <input id="emg-playall" type="checkbox" checked disabled />
+        Play all
+      </label>
+      <button
+        id="emg-next"
+        class="hidden rounded border border-neutral-300 px-3 py-1.5 disabled:opacity-50"
+        disabled
+      >
+        Next window
+      </button>
+      <span id="emg-status" class="text-neutral-500">Loading recordings…</span>
+    </div>
+
+    <canvas
+      id="emg-canvas"
+      class="h-[560px] w-full rounded-lg border border-neutral-200 bg-[#0b1020]"
+      role="img"
+      aria-label="Scrolling view of the 28 EMG channels; the highlighted band is the 250 ms window currently being classified."
+    ></canvas>
+    <p id="emg-announcer" class="sr-only" aria-live="polite"></p>
+
+    <div class="mt-4 grid gap-4 md:grid-cols-2">
+      {
+        (['seen', 'unseen'] as const).map((k) => (
+          <div class="rounded-lg border border-neutral-200 p-4">
+            <h2 class="mb-1 text-sm font-semibold" id={`emg-title-${k}`}>
+              {k === 'seen'
+                ? 'Model that trained on this person'
+                : 'Model that never saw this person'}
+            </h2>
+            <p class="mb-2 text-xs text-neutral-500">
+              {k === 'seen'
+                ? 'within-subject split (seen.onnx)'
+                : 'cross-subject fold (unseen.onnx)'}
+            </p>
+            <div id={`emg-grid-${k}`} class="mb-3 grid grid-cols-6 gap-1" />
+            <div id={`emg-bars-${k}`} class="mb-2 space-y-1" />
+            <p id={`emg-tally-${k}`} class="text-xs tabular-nums text-neutral-600">
+              correct windows: 0 / 0
+            </p>
+          </div>
+        ))
+      }
+    </div>
+
+    <p class="mt-3 text-sm text-neutral-600">
+      On these 255 clips the seen model scores
+      {' '}{pct(m.seen.accuracy_on_demo_clips)}% and the unseen model
+      {' '}{pct(m.unseen.accuracy_on_demo_clips)}%; on their full test sets
+      {' '}{pct(m.seen.split_test_accuracy)}% and
+      {' '}{pct(m.unseen.split_test_accuracy)}%.
+    </p>
+    <p id="emg-error" class="mt-2 hidden rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+      The in-browser runtime could not load; the results below are unaffected.
+    </p>
+  </section>
+
+  <section class="mb-12">
+    <h2 class="mb-4 text-xl font-semibold">Results</h2>
+    <EmgResults />
+    <p class="max-w-prose text-sm leading-relaxed text-neutral-700">
+      When the model already knows the person, a neural network buys nothing
+      over a classical classifier: both sit at 93%. The harder the question,
+      the more the network wins: +2 points on a new day, +12 points on a
+      person it has never seen (68 → 80%). Hand-crafted features are tuned to
+      one arm; learned features transfer. Wrist and forearm gestures are easy
+      on strangers (91–96% F1); fine finger gestures are the hard part
+      (63–68%), and the most frequent error, Hand Close read as a pinch grip,
+      is the same for both models.
+    </p>
+  </section>
+
+  <section class="mb-12">
+    <h2 class="mb-4 text-xl font-semibold">Window length</h2>
+    <img
+      width="624" height="384"
+      src="/emg/figures/ablation_window_length.svg"
+      alt="Accuracy versus window length for cross-day and cross-subject splits"
+      class="max-w-xl"
+    />
+    <p class="mt-3 max-w-prose text-sm leading-relaxed text-neutral-700">
+      Cutting the analysis window from 250 ms to 125 ms costs about a point
+      and a half of accuracy; dropping to 62.5 ms costs three to six. Most of
+      the gesture's information is in the first fraction of the contraction,
+      but the tail still helps — and windows longer than 250 ms cannot be
+      tested here because the recordings are only stored at that length.
+    </p>
+  </section>
+
+  <section class="mb-12">
+    <h2 class="mb-4 text-xl font-semibold">Which gestures are hard</h2>
+    <div class="grid gap-6 lg:grid-cols-2">
+      <img
+        width="960" height="384"
+        src="/emg/figures/per_class_f1_cnn_both_cross_subject.svg"
+        alt="Per-class F1 of the CNN on unseen subjects"
+      />
+      <img
+        width="864" height="768"
+        src="/emg/figures/confusion_cnn_both_cross_subject.svg"
+        alt="Row-normalised confusion matrix of the CNN on unseen subjects"
+      />
+    </div>
+  </section>
+
+  <section class="mb-12">
+    <h2 class="mb-4 text-xl font-semibold">How the data was split</h2>
+    <ul class="max-w-prose list-disc space-y-2 pl-5 text-sm leading-relaxed text-neutral-700">
+      <li>
+        <strong>Within-subject</strong> — one person's repetitions 1–4 train
+        the model, repetitions 6–7 test it, same day.
+      </li>
+      <li>
+        <strong>Cross-day</strong> — days 1–2 train, day 3 tests, same person:
+        the sensor has been taken off and put back on.
+      </li>
+      <li>
+        <strong>Cross-subject</strong> — whole people are held out: the model
+        is tested only on arms it has never seen.
+      </li>
+    </ul>
+    <p class="mt-3 max-w-prose text-sm leading-relaxed text-neutral-700">
+      Before every training run, a check asserts that no window's group — the
+      same repetition, day or person — appears on both sides of the split;
+      the same checks run as tests.
+    </p>
+  </section>
+
+  <section class="mb-12">
+    <h2 class="mb-4 text-xl font-semibold">Reproduce</h2>
+    <pre class="overflow-x-auto rounded-lg bg-neutral-100 p-4 text-sm">uv sync
+make download       # ~10 GB from the PhysioNet mirror
+make windows        # build the windowed dataset
+make reproduce      # features, LDA, CNN, figures (~45 min)
+make reproduce-full # adds cross-subject sweeps and ablations</pre>
+    <p class="mt-3 text-sm">
+      <a
+        href="https://github.com/Vvgit22/emg-gesture-decoder"
+        class="text-accent underline-offset-2 hover:underline">Full pipeline on GitHub</a>
+    </p>
+  </section>
+
+  <section class="mb-12">
+    <h2 class="mb-4 text-xl font-semibold">Data</h2>
+    <p class="max-w-prose text-sm leading-relaxed text-neutral-700">
+      GrabMyo dataset, PhysioNet (doi:10.13026/89dm-f662), distributed under
+      CC BY 4.0. Pradhan A, He J, Jiang N. <em>Multi-channel surface
+      electromyography signals for hand gesture recognition.</em> Sci Data 9,
+      733 (2022). doi:10.1038/s41597-022-01836-y. Pollard J, Gawlikowska A,
+      et al. <em>Resources available in PhysioNet.</em> Nature Health (2026).
+      doi:10.1038/s44360-026-00096-z.
+    </p>
+  </section>
+</Base>
+
+<script>
+  // EMG live demo: streams int16 clips from /emg/demo.bin, runs both ONNX
+  // models every 128 playback samples on the latest 256, and paints the
+  // scrolling 28-channel view plus the two prediction panels.
+  import demoMeta from '../data/emg-demo.json';
+
+  const SEG = demoMeta.n_samples, WIN = demoMeta.window, STEP = demoMeta.step;
+  const NG = demoMeta.n_gestures, NC = demoMeta.n_channels;
+  const FOREARM = new Set(demoMeta.channels.forearm);
+  const CLASSES = demoMeta.classes;
+  const SCALE = demoMeta.scale;
+
+  const $ = (id: string) => document.getElementById(id) as any;
+  const canvas = $('emg-canvas') as HTMLCanvasElement;
+  const ctx = canvas.getContext('2d')!;
+  const statusEl = $('emg-status'), errEl = $('emg-error');
+  const playBtn = $('emg-play'), gestureSel = $('emg-gesture'),
+    playAll = $('emg-playall'), nextBtn = $('emg-next');
+  const announcer = $('emg-announcer');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  let clips: Int16Array | null = null;      // [17][28][2048] flat
+  let sessions: Record<string, any> | null = null;
+  let ort: any = null;
+  let playing = false, pos = 0, nextInfer = 0, lastAnnounce = 0;
+  // ORT wasm sessions cannot run concurrently — serialise inferences.
+  let inferQueue: Promise<void> = Promise.resolve();
+  const tally: Record<string, { c: number; n: number }> = {
+    seen: { c: 0, n: 0 }, unseen: { c: 0, n: 0 },
+  };
+  let parityLogged = false;
+  const lastPred: Record<string, number | null> = { seen: null, unseen: null };
+
+  function clip(g: number, ch: number, s: number) {
+    return clips![(g * NC + ch) * SEG + s] * SCALE;
+  }
+
+  function softmax(logits: Float32Array | number[]) {
+    const mx = Math.max(...(logits as number[]));
+    const e = Array.from(logits as number[], (v) => Math.exp(v - mx));
+    const s = e.reduce((a, b) => a + b, 0);
+    return e.map((v) => v / s);
+  }
+
+  function draw() {
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.clientWidth, H = canvas.clientHeight;
+    if (canvas.width !== W * dpr) { canvas.width = W * dpr; canvas.height = H * dpr; }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = '#0b1020';
+    ctx.fillRect(0, 0, W, H);
+    if (!clips) return;
+    const g = Number(gestureSel.value);
+    const rowH = H / NC;
+    // highlight the current inference window [pos-256, pos]
+    const x0 = ((pos - WIN) / SEG) * W, x1 = (pos / SEG) * W;
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillRect(Math.max(0, x0), 0, Math.max(0, x1 - x0), H);
+    for (let ch = 0; ch < NC; ch++) {
+      const y = rowH * (ch + 0.5);
+      ctx.strokeStyle = FOREARM.has(ch) ? '#7cc7ff' : '#f0a35e';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      // normalise by the channel's own max in this clip
+      let mx = 1e-9;
+      for (let s = 0; s < SEG; s += 4) mx = Math.max(mx, Math.abs(clip(g, ch, s)));
+      for (let s = 0; s < SEG; s += 2) {
+        const x = (s / SEG) * W;
+        const v = clip(g, ch, s) / mx;
+        s ? ctx.lineTo(x, y - v * rowH * 0.42) : ctx.moveTo(x, y - v * rowH * 0.42);
+      }
+      ctx.stroke();
+    }
+    // playhead
+    const px = (pos / SEG) * W;
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+    ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, H); ctx.stroke();
+  }
+
+  function paintGrid(k: string, trueG: number, pred: number | null) {
+    const grid = $(`emg-grid-${k}`);
+    grid.innerHTML = '';
+    for (let i = 0; i < NG; i++) {
+      const cell = document.createElement('div');
+      const isT = i === trueG, isP = i === pred;
+      cell.className =
+        'flex h-7 items-center justify-center rounded text-[10px] ' +
+        (isP ? (isT ? 'bg-green-600 text-white' : 'bg-red-500 text-white')
+             : isT ? 'border-2 border-accent'
+                   : 'border border-neutral-300 text-neutral-600');
+      cell.textContent = String(i + 1);
+      cell.title = CLASSES[i];
+      grid.appendChild(cell);
+    }
+  }
+
+  function paintBars(k: string, probs: number[] | null) {
+    const box = $(`emg-bars-${k}`);
+    box.innerHTML = '';
+    if (!probs) return;
+    const top = probs.map((p, i) => [p, i] as const)
+      .sort((a, b) => b[0] - a[0]).slice(0, 3);
+    for (const [p, i] of top) {
+      const row = document.createElement('div');
+      row.className = 'flex items-center gap-2 text-xs';
+      row.innerHTML =
+        `<span class="w-40 truncate">${CLASSES[i]}</span>` +
+        `<span class="h-2 rounded bg-accent" style="width:${(p * 140).toFixed(0)}px"></span>` +
+        `<span class="tabular-nums text-neutral-500">${(p * 100).toFixed(0)}%</span>`;
+      box.appendChild(row);
+    }
+  }
+
+  function paintTally(k: string) {
+    const t = tally[k];
+    $(`emg-tally-${k}`).textContent = `correct windows: ${t.c} / ${t.n}`;
+  }
+
+  function currentWindow(endPos: number) {
+    const g = Number(gestureSel.value);
+    const x = new Float32Array(NC * WIN);
+    for (let ch = 0; ch < NC; ch++)
+      for (let s = 0; s < WIN; s++)
+        x[ch * WIN + s] = clip(g, ch, Math.max(0, endPos - WIN) + s);
+    return x;
+  }
+
+  async function infer(endPos: number) {
+    if (!sessions || endPos < WIN) return;
+    const g = Number(gestureSel.value);
+    const x = currentWindow(endPos);
+    const input = new ort.Tensor('float32', x, [1, NC, WIN]);
+    for (const k of ['seen', 'unseen'] as const) {
+      const out = await sessions[k].run({ emg: input });
+      const logits = out.logits.data as Float32Array;
+      (window as any).__emgLogits = Array.from(logits.slice(0, 4));
+      const probs = softmax(Array.from(logits));
+      const pred = probs.indexOf(Math.max(...probs));
+      tally[k].n++; tally[k].c += pred === g ? 1 : 0;
+      lastPred[k] = pred;
+      paintGrid(k, g, pred); paintBars(k, probs); paintTally(k);
+      if (g === 0 && !parityLogged && k === 'seen') {
+        (window as any).__emgSeenArgs = (window as any).__emgSeenArgs ?? [];
+        (window as any).__emgSeenArgs.push(pred);
+      }
+      if (g === 0 && !parityLogged && k === 'unseen') {
+        (window as any).__emgUnseenArgs = (window as any).__emgUnseenArgs ?? [];
+        (window as any).__emgUnseenArgs.push(pred);
+      }
+    }
+    if (g === 0 && (window as any).__emgSeenArgs?.length >= 15 && !parityLogged) {
+      parityLogged = true;
+      console.log('EMG_PARITY seen=' + JSON.stringify((window as any).__emgSeenArgs.slice(0, 15))
+        + ' unseen=' + JSON.stringify((window as any).__emgUnseenArgs.slice(0, 15)));
+    }
+    const now = performance.now();
+    if (now - lastAnnounce > 1000) {
+      lastAnnounce = now;
+      announcer.textContent =
+        `True: ${CLASSES[g]}. ` +
+        `Seen model: ${lastPred.seen == null ? 'pending' : CLASSES[lastPred.seen]}. ` +
+        `Unseen model: ${lastPred.unseen == null ? 'pending' : CLASSES[lastPred.unseen]}.`;
+    }
+  }
+
+  function stepPlayback(dt: number) {
+    pos += dt * 1024;
+    const g = Number(gestureSel.value);
+    if (pos >= SEG) {
+      if (playAll.checked) {
+        const ng = (g + 1) % NG;
+        gestureSel.value = String(ng);
+        pos = 0; nextInfer = WIN;
+        for (const k of ['seen', 'unseen'] as const) paintGrid(k, ng, null);
+      } else { pos = SEG; pause(); }
+    }
+    if (pos >= nextInfer) {
+      const at = Math.min(nextInfer, SEG);
+      nextInfer += STEP;
+      inferQueue = inferQueue.then(() => infer(at));
+    }
+    draw();
+  }
+
+  let raf = 0, lastT = 0;
+  function loop(t: number) {
+    if (!playing) return;
+    const dt = Math.min(0.1, (t - lastT) / 1000); lastT = t;
+    stepPlayback(dt);
+    raf = requestAnimationFrame(loop);
+  }
+  function play() {
+    if (!sessions || pos >= SEG) pos = 0;
+    if (pos === 0) nextInfer = WIN;
+    playing = true; playBtn.textContent = 'Pause';
+    lastT = performance.now();
+    raf = requestAnimationFrame(loop);
+  }
+  function pause() { playing = false; playBtn.textContent = 'Play'; cancelAnimationFrame(raf); }
+  function resetTally() {
+    for (const k of ['seen', 'unseen'] as const) { tally[k] = { c: 0, n: 0 }; paintTally(k); }
+  }
+
+  gestureSel.addEventListener('change', () => {
+    pos = 0; nextInfer = WIN;
+    if (!playAll.checked) resetTally();
+    for (const k of ['seen', 'unseen'] as const) paintGrid(k, Number(gestureSel.value), null);
+    draw();
+  });
+  playBtn.addEventListener('click', async () => {
+    if (playing) { pause(); return; }
+    if (!sessions) { await loadModels(); if (!sessions) return; }
+    play();
+  });
+  nextBtn.addEventListener('click', async () => {
+    if (!sessions) { await loadModels(); if (!sessions) return; }
+    pos = Math.min(SEG, pos + STEP);
+    if (pos >= nextInfer) {
+      const at = Math.min(nextInfer, SEG);
+      nextInfer += STEP;
+      inferQueue = inferQueue.then(() => infer(at));
+    }
+    draw();
+  });
+
+  async function loadModels() {
+    if (sessions || modelsLoading) return;
+    modelsLoading = true;
+    statusEl.textContent = 'Loading model…';
+    try {
+      ort = await import('onnxruntime-web');
+      ort.env.wasm.wasmPaths = '/emg/ort/';
+      ort.env.wasm.numThreads = 1;
+      sessions = {};
+      for (const k of ['seen', 'unseen'] as const)
+        sessions[k] = await ort.InferenceSession.create(
+          `/emg/models/${k}.onnx`, { executionProviders: ['wasm'] });
+      (window as any).__emg = { ort, sessions };
+      statusEl.textContent = 'Ready.';
+    } catch (e) {
+      console.error('emg model load failed', e);
+      statusEl.textContent = '';
+      errEl.classList.remove('hidden');
+    }
+  }
+  let modelsLoading = false;
+
+  async function init() {
+    try {
+      const [metaRes, binRes] = await Promise.all([
+        fetch('/emg/demo.json'), fetch('/emg/demo.bin'),
+      ]);
+      const meta = await metaRes.json();
+      if (meta.scale !== SCALE) throw new Error('demo.json scale mismatch');
+      clips = new Int16Array(await binRes.arrayBuffer());
+      statusEl.textContent = 'Ready.';
+      for (const el of [playBtn, gestureSel, playAll]) el.disabled = false;
+      if (reduced) {
+        nextBtn.classList.remove('hidden');
+        nextBtn.disabled = false;
+        pos = WIN; nextInfer = WIN;
+      }
+      draw();
+      for (const k of ['seen', 'unseen'] as const) paintGrid(k, 0, null);
+    } catch (e) {
+      console.error('emg demo init failed', e);
+      statusEl.textContent = '';
+      errEl.classList.remove('hidden');
+    }
+  }
+  // Load only when needed: on play, or when the canvas scrolls into view.
+  let started = false;
+  const start = () => { if (!started) { started = true; init(); } };
+  new IntersectionObserver((es, o) => {
+    if (es.some((e) => e.isIntersecting)) { start(); o.disconnect(); }
+  }).observe(canvas);
+  draw();
+</script>

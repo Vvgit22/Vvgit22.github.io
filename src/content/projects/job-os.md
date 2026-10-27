@@ -7,7 +7,7 @@ period: '2026 – present'
 role: 'Sole author'
 tags: [TypeScript, Next.js 16, Drizzle ORM, Postgres/PGlite, Zod, Playwright]
 thumbnail: /thumbs/job-os.webp
-order: 4
+order: 5
 ---
 
 ## Problem

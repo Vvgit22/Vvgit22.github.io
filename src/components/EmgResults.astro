@@ -1,0 +1,85 @@
+---
+import results from '../data/emg-results.json';
+
+const KINDS = [
+  ['within_subject', 'within-subject'],
+  ['cross_day', 'cross-day'],
+  ['cross_subject', 'cross-subject'],
+] as const;
+
+type Cell = {
+  n_splits: number;
+  accuracy_mean: number;
+  accuracy_std: number;
+  chance_accuracy: number;
+};
+type Cells = Record<string, Record<string, Record<string, Cell>>>;
+const cells = results.cells as Cells;
+
+function modelsIn(cells: Cells, prefix: string) {
+  return Object.keys(cells).filter((m) =>
+    prefix === 'lda' ? m === 'lda' : m.startsWith('cnn'));
+}
+function fmt(cell?: Cell) {
+  return cell ? `${(cell.accuracy_mean * 100).toFixed(1)} ± ${(cell.accuracy_std * 100).toFixed(1)}` : '—';
+}
+function nSplits(cells: Cells, model: string, kind: string) {
+  for (const c of Object.values(cells[model] ?? {}))
+    if (c[kind]) return c[kind].n_splits;
+  return 0;
+}
+const CONFIGS = ['forearm', 'wrist', 'both'];
+const chance = (results.table[0].chance_accuracy * 100).toFixed(1);
+---
+
+{
+  (['lda', 'cnn'] as const).map((prefix) => {
+    const models = modelsIn(cells, prefix);
+    return (
+      <div class="mb-8">
+        <h3 class="mb-2 text-base font-semibold">
+          {prefix === 'lda' ? 'LDA on hand-crafted features' : 'Convolutional network'}
+        </h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-neutral-200 text-left text-neutral-500">
+                <th class="py-1 pr-4 font-medium">Model</th>
+                <th class="py-1 pr-4 font-medium">Channels</th>
+                {KINDS.map(([k, label]) => (
+                  <th class="py-1 pr-4 font-medium">
+                    {label}
+                    <span class="block text-xs font-normal">
+                      n={nSplits(cells, models[0], k)} splits
+                    </span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {models.flatMap((model) =>
+                CONFIGS.filter((c) => cells[model]?.[c]).map((c) => (
+                  <tr class="border-b border-neutral-100">
+                    <td class="py-1 pr-4 text-neutral-500">{model}</td>
+                    <td class="py-1 pr-4">{c}</td>
+                    {KINDS.map(([k]) => (
+                      <td class="py-1 pr-4 tabular-nums">
+                        {fmt(cells[model]?.[c]?.[k])}
+                      </td>
+                    ))}
+                  </tr>
+                )),
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  })
+}
+
+<p class="text-xs text-neutral-500">
+  Accuracy in %, mean ± std across splits. Chance = 1/17 ≈ {chance}%.
+  Window-length ablations (cnn_w128 = 125 ms, cnn_w64 = 62.5 ms) are run on
+  the 'both' channel set only. Generated {results.generated}.
+</p>

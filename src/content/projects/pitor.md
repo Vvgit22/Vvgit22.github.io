@@ -8,7 +8,7 @@ role: 'Research Intern (part-time alongside degree)'
 team: 'Paris Institute for Transplantation & Organ Regeneration (PITOR)'
 tags: [Python, local LLMs, embeddings, clustering]
 thumbnail: /thumbs/pitor.webp
-order: 6
+order: 7
 ---
 
 Kidney-transplant research produces thousands of free-text patient responses that need consistent thematic analysis, and rejection diagnosis from biopsy lesion scores that is normally judged by expert pathologists.

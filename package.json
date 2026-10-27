@@ -8,11 +8,13 @@
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",
-    "media:check": "node scripts/media-check.mjs"
+    "media:check": "node scripts/media-check.mjs",
+    "emg:sync": "node scripts/sync-emg.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.3",
-    "astro": "7.3.8"
+    "astro": "7.3.8",
+    "onnxruntime-web": "^1.30.0"
   },
   "devDependencies": {
     "@astrojs/check": "0.9.10",

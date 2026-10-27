@@ -5,6 +5,7 @@ import Base from '../../layouts/Base.astro';
 import StatusChip from '../../components/StatusChip.astro';
 import Video from '../../components/Video.astro';
 import JobOsArchitecture from '../../components/JobOsArchitecture.astro';
+import EmgResults from '../../components/EmgResults.astro';
 import { mediaExists, requestPhotos } from '../../lib/media';
 
 export async function getStaticPaths() {
@@ -106,6 +107,13 @@ const extras = data.links?.more ?? [];
   <article class="prose-body">
     <Content />
   </article>
+
+  {project.id === 'emg-decoder' && (
+    <section class="mb-8">
+      <h2 class="mb-3 mt-8 text-lg font-semibold">Results</h2>
+      <EmgResults />
+    </section>
+  )}
 
   {requestVideoExists && (
     <section class="mb-8">
