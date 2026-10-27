@@ -136,7 +136,7 @@ const cnnWS = (cells as any).cnn.both.within_subject.accuracy_mean;
       Subject 1 was chosen as the demo person before any model was trained;
       on this one person the two models happen to land close together, while
       across all 43 people the gap is {pct(cnnWS)}% against
-      {' '}{pct(cnnCS)}%.
+      {' '}{cnnCS.toFixed(1)}%.
     </p>
     <p id="emg-error" class="mt-2 hidden rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
       The in-browser runtime could not load; the results below are unaffected.
