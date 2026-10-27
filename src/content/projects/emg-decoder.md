@@ -7,7 +7,7 @@ period: 'October 2026'
 role: 'Solo project'
 tags: [Python, PyTorch, scikit-learn, ONNX, signal processing, EMG]
 thumbnail: /thumbs/emg-decoder.webp
-order: 4
+order: 6
 links:
   demo: /emg/
   repo: https://github.com/Vvgit22/emg-gesture-decoder
