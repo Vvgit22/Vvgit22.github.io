@@ -18,6 +18,8 @@ for (const f of ['seen.onnx', 'seen.meta.json', 'unseen.onnx', 'unseen.meta.json
   copyFileSync(join(SITE, 'models', f), join(OUT, 'models', f));
 copyFileSync(join(SITE, 'results.json'), 'src/data/emg-results.json');
 copyFileSync(join(SITE, 'demo.json'), 'src/data/emg-demo.json');
+try { copyFileSync(join(SITE, 'summary.json'), 'src/data/emg-summary.json'); } catch {}
+try { copyFileSync(join(EMG, 'artifacts/experiments/causal_v1/timing.json'), 'src/data/emg-timing.json'); } catch {}
 
 // ONNX Runtime wasm backend (runtime, not our asset budget): ORT 1.30's
 // wasm backend loads the jsep build; copied from node_modules so the
