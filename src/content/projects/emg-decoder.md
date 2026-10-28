@@ -1,6 +1,6 @@
 ---
-title: 'EMG gesture decoder: 17 hand gestures from muscle signals'
-summary: 'A small convolutional network trained on the open GrabMyo dataset (43 people) and tested three ways: same session, next day, and a person it has never seen. Runs live in the browser on held-out recordings.'
+title: 'EMG gesture decoder: 16 gestures plus a rest class from muscle signals'
+summary: 'A small convolutional network trained on the open GrabMyo dataset (43 people) and tested three ways: same session, a different day (sessions on days 1, 8 and 29), and a person it has never seen. 79.6% is the window-level fold mean across 43 unseen people (CNN, both rings, historical benchmark; wrist-only 60.2%). Runs live in the browser on causally preprocessed held-out recordings. Runs live in the browser on held-out recordings.'
 status: live
 statusLabel: 'Live demo'
 period: 'October 2026'

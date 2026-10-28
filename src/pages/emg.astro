@@ -4,6 +4,8 @@ import DemoHeader from '../components/DemoHeader.astro';
 import EmgResults from '../components/EmgResults.astro';
 import results from '../data/emg-results.json';
 import demoMeta from '../data/emg-demo.json';
+import summary from '../data/emg-summary.json';
+import timing from '../data/emg-timing.json';
 
 // The interpretation paragraph below is approved prose with real numbers in
 // it. Fail the build if the audit table drifts out of the ranges it cites.
@@ -13,10 +15,24 @@ const cells = results.cells as Record<
 >;
 const cnnCS = cells.cnn.both.cross_subject.accuracy_mean * 100;
 const ldaCS = cells.lda.both.cross_subject.accuracy_mean * 100;
-if (cnnCS < 79 || cnnCS > 80.5)
-  throw new Error(`emg page: cnn cross_subject ${cnnCS}% outside [79, 80.5]`);
-if (ldaCS < 67 || ldaCS > 69)
-  throw new Error(`emg page: lda cross_subject ${ldaCS}% outside [67, 69]`);
+// build-time sanity: every experiment id the page cites exists and every
+// rendered percentage is a fraction in [0,1]
+const benchExps = (demoMeta.benchmark?.experiments ?? {}) as
+  Record<string, unknown>;
+for (const id of ['causal_v1', 'offline_v1b', 'protocol_v1',
+                  'protocol_v1_additions', 'protocol_v2'])
+  if (!benchExps[id])
+    throw new Error(`emg page: benchmark missing ${id}`);
+const _chk = (x: number, where: string) => {
+  if (!(x >= 0 && x <= 1)) throw new Error(`emg page: ${where}=${x} out of [0,1]`);
+};
+_chk(cells.cnn.both.cross_subject.accuracy_mean, 'cnn cs');
+_chk(cells.lda.both.cross_subject.accuracy_mean, 'lda cs');
+for (const k of ['seen', 'unseen'] as const) {
+  _chk((demoMeta.models as any)[k].accuracy_on_demo_clips, `${k} demo acc`);
+  _chk((demoMeta.models as any)[k].split_test_accuracy, `${k} test acc`);
+}
+const timingG = timing.group_delay_ms;
 
 const m = demoMeta.models as Record<
   string,
@@ -57,7 +73,7 @@ const cnnWS = (cells as any).cnn.both.within_subject.accuracy_mean;
   <DemoHeader
     backHref="/projects/emg-decoder/"
     title="EMG gesture decoder, live in your browser"
-    banner="Real held-out recordings from the open GrabMyo dataset (subject 1, day 1, trial 6), used in training by neither model. Both networks run in your browser with ONNX Runtime."
+    banner="Real held-out recordings from the open GrabMyo dataset (subject 1, day 1, trial 6), used in training by neither model and run through the causal preprocessing chain a live stream would see. Both networks run in your browser with ONNX Runtime."
     tone="blue"
   />
 
@@ -88,6 +104,12 @@ const cnnWS = (cells as any).cnn.both.within_subject.accuracy_mean;
         Next window
       </button>
       <span id="emg-status" class="text-neutral-500">Loading recordings…</span>
+      <button id="emg-retry" class="hidden rounded border border-neutral-300 px-3 py-1.5 text-sm">
+        Retry
+      </button>
+      <span class="inline-flex min-h-4 min-w-40 gap-3 text-xs tabular-nums text-neutral-500">
+        <span id="emg-skipped"></span><span id="emg-inf-time"></span>
+      </span>
     </div>
 
     <canvas
@@ -98,7 +120,7 @@ const cnnWS = (cells as any).cnn.both.within_subject.accuracy_mean;
     ></canvas>
     <p id="emg-announcer" class="sr-only" aria-live="polite"></p>
 
-    <div class="mt-4 grid gap-4 md:grid-cols-2">
+    <div class="mt-4 grid gap-4 sm:grid-cols-1 md:grid-cols-2">
       {
         (['seen', 'unseen'] as const).map((k) => (
           <div class="rounded-lg border border-neutral-200 p-4">
@@ -136,10 +158,12 @@ const cnnWS = (cells as any).cnn.both.within_subject.accuracy_mean;
       Subject 1 was chosen as the demo person before any model was trained;
       on this one person the two models happen to land close together, while
       across all 43 people the gap is {pct(cnnWS)}% against
-      {' '}{cnnCS.toFixed(1)}%.
+      {' '}{cnnCS.toFixed(1)}% (both figures are window-level fold means;
+      the person-to-person spread is in the Robustness table).
     </p>
     <p id="emg-error" class="mt-2 hidden rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
       The in-browser runtime could not load; the results below are unaffected.
+      <button id="emg-retry-2" class="ml-2 underline">Retry</button>
     </p>
   </section>
 
@@ -155,6 +179,8 @@ const cnnWS = (cells as any).cnn.both.within_subject.accuracy_mean;
       on strangers (91–96% F1); fine finger gestures are the hard part
       (63–68%), and the most frequent error, Hand Close read as a pinch grip,
       is the same for both models.
+      Across three seeds and a causal preprocessing chain the unseen-person
+      result stays between 79.5 and 81.3%.
     </p>
   </section>
 
@@ -246,6 +272,61 @@ const cnnWS = (cells as any).cnn.both.within_subject.accuracy_mean;
   </section>
 
   <section class="mb-12">
+    <h2 class="mb-4 text-xl font-semibold">Timing</h2>
+    <ul class="list-disc space-y-1 pl-5 text-sm text-neutral-700">
+      <li>Analysis window 250 ms, hop 125 ms; causal filter group delay
+        {timingG['50'].toFixed(1)}–{timingG['200'].toFixed(1)} ms
+        (50–200 Hz); filter settling {timing.settle_s_1pct.toFixed(2)} s,
+        under the dropped 0.5 s.</li>
+      <li>Inference runs on the latest window every 125 ms of playback;
+        measured browser time per window shown next to the controls; no
+        smoothing between windows.</li>
+      <li>This says nothing about latency to gesture onset; that would
+        need onset-aligned data this dataset does not provide.</li>
+      <li>The ONNX graphs contain per-channel normalisation and the
+        network; the causal filter chain runs on the recording upstream,
+        not in the graph.</li>
+    </ul>
+  </section>
+
+  <section class="mb-12">
+    <h2 class="mb-4 text-xl font-semibold">Robustness checks</h2>
+    <table class="w-full max-w-2xl text-sm">
+      <tbody>
+        <tr class="border-b border-neutral-100">
+          <td class="py-1 pr-4 font-medium">Seeds (offline control)</td>
+          <td class="py-1 tabular-nums">79.5 / 80.8 / 80.4% — SD 0.64 pp</td>
+        </tr>
+        <tr class="border-b border-neutral-100">
+          <td class="py-1 pr-4 font-medium">Causal vs offline preprocessing</td>
+          <td class="py-1 tabular-nums">80.0% vs 79.5% (+0.41 pp paired)</td>
+        </tr>
+        <tr class="border-b border-neutral-100">
+          <td class="py-1 pr-4 font-medium">Protocol v2 (re-drawn val subjects)</td>
+          <td class="py-1 tabular-nums">80.7 ± 2.3%</td>
+        </tr>
+        <tr class="border-b border-neutral-100">
+          <td class="py-1 pr-4 font-medium">Person-to-person spread (43)</td>
+          <td class="py-1 tabular-nums">mean 80.0, SD 8.6 pp, worst 54.9%,
+            5 of 43 below 70%</td>
+        </tr>
+        <tr class="border-b border-neutral-100">
+          <td class="py-1 pr-4 font-medium">Calibration (temp. on val)</td>
+          <td class="py-1 tabular-nums">ECE 8–13 pp → 2.5–7.2 pp; confidences
+            shown in the panels are calibrated</td>
+        </tr>
+        <tr class="border-b border-neutral-100">
+          <td class="py-1 pr-4 font-medium">Synthetic perturbations*</td>
+          <td class="py-1 tabular-nums">1–2 dead channels −5/−11 pp;
+            8 dead channels −45 pp; 0 dB noise −61 pp</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="mt-1 text-xs text-neutral-500">* controlled synthetic
+      diagnostics, not evidence of real electrode re-donning robustness.</p>
+  </section>
+
+  <section class="mb-12">
     <h2 class="mb-4 text-xl font-semibold">How the data was split</h2>
     <ul class="max-w-prose list-disc space-y-2 pl-5 text-sm leading-relaxed text-neutral-700">
       <li>
@@ -296,9 +377,11 @@ make reproduce-full # adds cross-subject sweeps and ablations</pre>
 </Base>
 
 <script>
-  // EMG live demo: streams int16 clips from /emg/demo.bin, runs both ONNX
-  // models every 128 playback samples on the latest 256, and paints the
-  // scrolling 28-channel view plus the two prediction panels.
+  // EMG live demo — small state machine.
+  // States: idle -> loading -> ready | error. A single loadAll() promise
+  // gates Play; a single rAF loop handle prevents duplicate loops.
+  // Every clip yields exactly 15 inference windows (starts 0,128,...,1792);
+  // a full Play-all cycle = 255 windows = the static metric's set.
   import demoMeta from '../data/emg-demo.json';
 
   const SEG = demoMeta.n_samples, WIN = demoMeta.window, STEP = demoMeta.step;
@@ -306,35 +389,56 @@ make reproduce-full # adds cross-subject sweeps and ablations</pre>
   const FOREARM = new Set(demoMeta.channels.forearm);
   const CLASSES = demoMeta.classes;
   const SCALE = demoMeta.scale;
+  const TEMPS: Record<string, number> = {
+    seen: demoMeta.models?.seen?.temperature ?? 1,
+    unseen: demoMeta.models?.unseen?.temperature ?? 1,
+  };
 
   const $ = (id: string) => document.getElementById(id) as any;
   const canvas = $('emg-canvas') as HTMLCanvasElement;
   const ctx = canvas.getContext('2d')!;
-  const statusEl = $('emg-status'), errEl = $('emg-error');
+  const statusEl = $('emg-status'), errEl = $('emg-error'),
+    retryBtn = $('emg-retry');
   const playBtn = $('emg-play'), gestureSel = $('emg-gesture'),
     playAll = $('emg-playall'), nextBtn = $('emg-next');
   const announcer = $('emg-announcer');
+  const skippedEl = $('emg-skipped');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  let clips: Int16Array | null = null;      // [17][28][2048] flat
+  let state: 'idle' | 'loading' | 'ready' | 'error' = 'idle';
+  let clips: Int16Array | null = null;
   let sessions: Record<string, any> | null = null;
   let ort: any = null;
   let playing = false, pos = 0, nextInfer = 0, lastAnnounce = 0;
-  // ORT wasm sessions cannot run concurrently; serialise inferences.
-  let inferQueue: Promise<void> = Promise.resolve();
+  let generation = 0;             // stale-result guard
+  let skipped = 0;
+  let inferChain: Promise<void> = Promise.resolve();
+  const inFlight: Record<string, boolean> = { seen: false, unseen: false };
   const tally: Record<string, { c: number; n: number }> = {
     seen: { c: 0, n: 0 }, unseen: { c: 0, n: 0 },
   };
-  let parityLogged = false;
   const lastPred: Record<string, number | null> = { seen: null, unseen: null };
+  // test hooks (headless check only)
+  const testState = {
+    staleDiscarded: 0, loopCount: 0, inferCount: { seen: 0, unseen: 0 },
+    calibratedMax: { seen: [] as number[], unseen: [] as number[] },
+    argmax: { seen: [] as number[], unseen: [] as number[] },
+    latencyMs: [] as number[],
+  };
+  let speed = 1;
+  (window as any).__emg = {
+    setSpeed: (n: number) => { speed = n; },
+    test: testState,
+    get generation() { return generation; },
+    tally,
+  };
 
   function clip(g: number, ch: number, s: number) {
     return clips![(g * NC + ch) * SEG + s] * SCALE;
   }
-
-  function softmax(logits: Float32Array | number[]) {
+  function softmax(logits: Float32Array | number[], T = 1) {
     const mx = Math.max(...(logits as number[]));
-    const e = Array.from(logits as number[], (v) => Math.exp(v - mx));
+    const e = Array.from(logits as number[], (v) => Math.exp(v / T - mx / T));
     const s = e.reduce((a, b) => a + b, 0);
     return e.map((v) => v / s);
   }
@@ -356,7 +460,6 @@ make reproduce-full # adds cross-subject sweeps and ablations</pre>
     }
     const g = Number(gestureSel.value);
     const rowH = H / NC;
-    // highlight the current inference window [pos-256, pos]
     const x0 = ((pos - WIN) / SEG) * W, x1 = (pos / SEG) * W;
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
     ctx.fillRect(Math.max(0, x0), 0, Math.max(0, x1 - x0), H);
@@ -365,7 +468,6 @@ make reproduce-full # adds cross-subject sweeps and ablations</pre>
       ctx.strokeStyle = FOREARM.has(ch) ? '#7cc7ff' : '#f0a35e';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      // normalise by the channel's own max in this clip
       let mx = 1e-9;
       for (let s = 0; s < SEG; s += 4) mx = Math.max(mx, Math.abs(clip(g, ch, s)));
       for (let s = 0; s < SEG; s += 2) {
@@ -375,7 +477,6 @@ make reproduce-full # adds cross-subject sweeps and ablations</pre>
       }
       ctx.stroke();
     }
-    // playhead
     const px = (pos / SEG) * W;
     ctx.strokeStyle = 'rgba(255,255,255,0.7)';
     ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, H); ctx.stroke();
@@ -400,11 +501,11 @@ make reproduce-full # adds cross-subject sweeps and ablations</pre>
     }
   }
 
-  function paintBars(k: string, probs: number[] | null) {
+  function paintBars(k: string, probsCal: number[] | null, rawMax: number | null) {
     const box = $(`emg-bars-${k}`);
     box.innerHTML = '';
-    if (!probs) return;
-    const top = probs.map((p, i) => [p, i] as const)
+    if (!probsCal) return;
+    const top = probsCal.map((p, i) => [p, i] as const)
       .sort((a, b) => b[0] - a[0]).slice(0, 3);
     for (const [p, i] of top) {
       const row = document.createElement('div');
@@ -415,77 +516,111 @@ make reproduce-full # adds cross-subject sweeps and ablations</pre>
         `<span class="tabular-nums text-neutral-500">${(p * 100).toFixed(0)}%</span>`;
       box.appendChild(row);
     }
+    const note = document.createElement('div');
+    note.className = 'mt-1 text-[11px] text-neutral-500';
+    note.textContent =
+      `calibrated confidence (softmax/T, T=${TEMPS[k].toFixed(2)})` +
+      (rawMax != null ? `; raw softmax max: ${(rawMax * 100).toFixed(0)}%` : '');
+    box.appendChild(note);
   }
 
   function paintTally(k: string) {
     const t = tally[k];
     $(`emg-tally-${k}`).textContent = `correct windows: ${t.c} / ${t.n}`;
   }
+  function paintSkipped() {
+    if (skippedEl) skippedEl.textContent = `windows skipped: ${skipped}`;
+  }
 
-  function currentWindow(endPos: number) {
-    const g = Number(gestureSel.value);
+  function windowAt(g: number, start: number) {
     const x = new Float32Array(NC * WIN);
     for (let ch = 0; ch < NC; ch++)
       for (let s = 0; s < WIN; s++)
-        x[ch * WIN + s] = clip(g, ch, Math.max(0, endPos - WIN) + s);
+        x[ch * WIN + s] = clip(g, ch, start + s);
     return x;
   }
 
-  async function infer(endPos: number) {
-    if (!sessions || endPos < WIN) return;
-    const g = Number(gestureSel.value);
-    const x = currentWindow(endPos);
-    const input = new ort.Tensor('float32', x, [1, NC, WIN]);
+  // Schedule one inference window for each model, bounded: at most one
+  // in-flight inference per model; if playback outruns inference the
+  // window is skipped and counted, never queued.
+  function scheduleInfer(g: number, start: number, gen: number) {
     for (const k of ['seen', 'unseen'] as const) {
-      const out = await sessions[k].run({ emg: input });
-      const logits = out.logits.data as Float32Array;
-      (window as any).__emgLogits = Array.from(logits.slice(0, 4));
-      const probs = softmax(Array.from(logits));
-      const pred = probs.indexOf(Math.max(...probs));
-      tally[k].n++; tally[k].c += pred === g ? 1 : 0;
-      lastPred[k] = pred;
-      paintGrid(k, g, pred); paintBars(k, probs); paintTally(k);
-      if (g === 0 && !parityLogged && k === 'seen') {
-        (window as any).__emgSeenArgs = (window as any).__emgSeenArgs ?? [];
-        (window as any).__emgSeenArgs.push(pred);
-      }
-      if (g === 0 && !parityLogged && k === 'unseen') {
-        (window as any).__emgUnseenArgs = (window as any).__emgUnseenArgs ?? [];
-        (window as any).__emgUnseenArgs.push(pred);
-      }
-    }
-    if (g === 0 && (window as any).__emgSeenArgs?.length >= 15 && !parityLogged) {
-      parityLogged = true;
-      console.log('EMG_PARITY seen=' + JSON.stringify((window as any).__emgSeenArgs.slice(0, 15))
-        + ' unseen=' + JSON.stringify((window as any).__emgUnseenArgs.slice(0, 15)));
-    }
-    const now = performance.now();
-    if (now - lastAnnounce > 1000) {
-      lastAnnounce = now;
-      announcer.textContent =
-        `True: ${CLASSES[g]}. ` +
-        `Seen model: ${lastPred.seen == null ? 'pending' : CLASSES[lastPred.seen]}. ` +
-        `Unseen model: ${lastPred.unseen == null ? 'pending' : CLASSES[lastPred.unseen]}.`;
+      if (inFlight[k]) { skipped++; paintSkipped(); continue; }
+      inFlight[k] = true;
+      testState.inferCount[k]++;
+      const x = windowAt(g, start);
+      const t0 = performance.now();
+      // wasm sessions cannot run concurrently — serialise on one chain;
+      // inFlight[k] bounds each model to one queued window
+      inferChain = inferChain
+        .then(() => sessions![k].run(
+          { emg: new ort.Tensor('float32', x, [1, NC, WIN]) }))
+        .then((out: any) => {
+          const dt = performance.now() - t0;
+          testState.latencyMs.push(dt);
+          if (dtEl) {
+            testState.latencyMs.sort((a, b) => a - b);
+            dtEl.textContent = `inference ${testState.latencyMs[
+              Math.floor(testState.latencyMs.length / 2)].toFixed(0)} ms/window (median)`;
+          }
+          if (gen !== generation) {
+            testState.staleDiscarded++;           // late result for a stale context
+            return;
+          }
+          const logits = Array.from(out.logits.data as Float32Array);
+          const raw = softmax(logits, 1);
+          const cal = softmax(logits, TEMPS[k]);
+          const pred = raw.indexOf(Math.max(...raw));
+          const calMax = Math.max(...cal);
+          testState.argmax[k].push(pred);
+          testState.calibratedMax[k].push(calMax);
+          tally[k].n++; tally[k].c += pred === g ? 1 : 0;
+          lastPred[k] = pred;
+          paintGrid(k, g, pred); paintBars(k, cal, Math.max(...raw)); paintTally(k);
+          const now = performance.now();
+          if (now - lastAnnounce > 1000) {
+            lastAnnounce = now;
+            announcer.textContent =
+              `True: ${CLASSES[g]}. ` +
+              `Seen model: ${lastPred.seen == null ? 'pending' : CLASSES[lastPred.seen]}. ` +
+              `Unseen model: ${lastPred.unseen == null ? 'pending' : CLASSES[lastPred.unseen]}.`;
+          }
+        })
+        .catch((e: any) => { console.error('emg inference failed', e); })
+        .finally(() => { inFlight[k] = false; });
     }
   }
+  const dtEl = $('emg-inf-time');
 
-  function stepPlayback(dt: number) {
-    pos += dt * 1024;
+  function advanceTo(npos: number) {
+    pos = npos;
     const g = Number(gestureSel.value);
     if (pos >= SEG) {
+      // drain this clip's remaining windows BEFORE advancing the gesture
+      // (a fast cycle must still produce exactly 15 windows per clip)
+      while (nextInfer <= SEG - WIN) {
+        scheduleInfer(g, nextInfer, generation);
+        nextInfer += STEP;
+      }
       if (playAll.checked) {
         const ng = (g + 1) % NG;
         gestureSel.value = String(ng);
-        pos = 0; nextInfer = WIN;
+        // no generation++: the drained windows of the old clip are still
+        // valid results; only manual changes interrupt
+        pos -= SEG; nextInfer = 0;
         for (const k of ['seen', 'unseen'] as const) paintGrid(k, ng, null);
       } else { pos = SEG; pause(); }
     }
-    if (pos >= nextInfer) {
-      const at = Math.min(nextInfer, SEG);
+    // every clip yields exactly 15 windows at starts 0,128,...,1792
+    while (nextInfer + WIN <= pos && nextInfer <= SEG - WIN) {
+      scheduleInfer(g, nextInfer, generation);
       nextInfer += STEP;
-      inferQueue = inferQueue.then(() => infer(at));
     }
     draw();
+  }
+
+  function stepPlayback(dt: number) {
+    advanceTo(pos + dt * 1024 * speed);
   }
 
   let raf = 0, lastT = 0;
@@ -496,95 +631,108 @@ make reproduce-full # adds cross-subject sweeps and ablations</pre>
     raf = requestAnimationFrame(loop);
   }
   function play() {
-    if (!sessions || pos >= SEG) pos = 0;
-    if (pos === 0) nextInfer = WIN;
+    if (!clips || !sessions) return;
+    if (pos >= SEG) { pos = 0; nextInfer = 0; }
     playing = true; playBtn.textContent = 'Pause';
+    cancelAnimationFrame(raf);      // never a second loop
+    testState.loopCount++;
     lastT = performance.now();
     raf = requestAnimationFrame(loop);
   }
-  function pause() { playing = false; playBtn.textContent = 'Play'; cancelAnimationFrame(raf); }
+  function pause() {
+    playing = false; playBtn.textContent = 'Play';
+    cancelAnimationFrame(raf);
+    generation++;                   // in-flight results become stale
+  }
   function resetTally() {
     for (const k of ['seen', 'unseen'] as const) { tally[k] = { c: 0, n: 0 }; paintTally(k); }
   }
 
   gestureSel.addEventListener('change', () => {
-    pos = 0; nextInfer = WIN;
+    pos = 0; nextInfer = 0;
+    generation++;                   // discard in-flight results
     if (!playAll.checked) resetTally();
-    for (const k of ['seen', 'unseen'] as const) paintGrid(k, Number(gestureSel.value), null);
+    for (const k of ['seen', 'unseen'] as const)
+      paintGrid(k, Number(gestureSel.value), null);
     draw();
   });
   playBtn.addEventListener('click', async () => {
     if (playing) { pause(); return; }
-    if (!clips) { start(); await clipsReady; if (!clips) return; }
-    if (!sessions) { await loadModels(); if (!sessions) return; }
+    if (state !== 'ready') { const ok = await loadAll(); if (!ok) return; }
     play();
   });
   nextBtn.addEventListener('click', async () => {
-    if (!clips) { start(); await clipsReady; if (!clips) return; }
-    if (!sessions) { await loadModels(); if (!sessions) return; }
+    if (state !== 'ready') { const ok = await loadAll(); if (!ok) return; }
     pos = Math.min(SEG, pos + STEP);
-    if (pos >= nextInfer) {
-      const at = Math.min(nextInfer, SEG);
+    while (nextInfer + WIN <= pos && nextInfer <= SEG - WIN) {
+      scheduleInfer(Number(gestureSel.value), nextInfer, generation);
       nextInfer += STEP;
-      inferQueue = inferQueue.then(() => infer(at));
     }
     draw();
   });
+  playAll.addEventListener('change', resetTally);
+  retryBtn?.addEventListener('click', () => { loadAll(true); });
+  $('emg-retry-2')?.addEventListener('click', () => { loadAll(true); });
 
-  async function loadModels() {
-    if (sessions || modelsLoading) return;
-    modelsLoading = true;
-    statusEl.textContent = 'Loading model…';
-    try {
-      ort = await import('onnxruntime-web');
-      ort.env.wasm.wasmPaths = '/emg/ort/';
-      ort.env.wasm.numThreads = 1;
-      sessions = {};
-      for (const k of ['seen', 'unseen'] as const)
-        sessions[k] = await ort.InferenceSession.create(
-          `/emg/models/${k}.onnx`, { executionProviders: ['wasm'] });
-      (window as any).__emg = { ort, sessions };
-      statusEl.textContent = 'Ready.';
-    } catch (e) {
-      console.error('emg model load failed', e);
-      statusEl.textContent = '';
-      errEl.classList.remove('hidden');
-    }
-  }
-  let modelsLoading = false;
-
-  let clipsReady: Promise<void> = Promise.resolve();
-  async function init() {
-    try {
-      const [metaRes, binRes] = await Promise.all([
-        fetch('/emg/demo.json'), fetch('/emg/demo.bin'),
-      ]);
-      const meta = await metaRes.json();
-      if (meta.scale !== SCALE) throw new Error('demo.json scale mismatch');
-      clips = new Int16Array(await binRes.arrayBuffer());
-      statusEl.textContent = 'Ready.';
-      if (reduced) {
-        nextBtn.classList.remove('hidden');
-        nextBtn.disabled = false;
-        pos = WIN; nextInfer = WIN;
+  let loadPromise: Promise<boolean> | null = null;
+  async function loadAll(force = false, clipsOnly = false): Promise<boolean> {
+    if (state === 'ready' && !force && !clipsOnly) return true;
+    if (loadPromise && !force) return loadPromise;
+    loadPromise = (async () => {
+      state = 'loading';
+      statusEl.textContent = 'Loading recordings and models…';
+      errEl.classList.add('hidden');
+      try {
+        if (!clips) {
+          const [metaRes, binRes] = await Promise.all([
+            fetch('/emg/demo.json'), fetch('/emg/demo.bin'),
+          ]);
+          if (!metaRes.ok || !binRes.ok) throw new Error('fetch failed');
+          const meta = await metaRes.json();
+          if (meta.scale !== SCALE) throw new Error('demo.json scale mismatch');
+          clips = new Int16Array(await binRes.arrayBuffer());
+        }
+        if (!sessions && !clipsOnly) {
+          ort = await import('onnxruntime-web');
+          ort.env.wasm.wasmPaths = '/emg/ort/';
+          ort.env.wasm.numThreads = 1;
+          sessions = {};
+          for (const k of ['seen', 'unseen'] as const)
+            sessions[k] = await ort.InferenceSession.create(
+              `/emg/models/${k}.onnx`, { executionProviders: ['wasm'] });
+        }
+        if (sessions) state = 'ready';
+        else state = 'idle';
+        statusEl.textContent = sessions ? 'Ready.' : 'Recordings ready; press Play to load models.';
+        if (reduced) {
+          nextBtn.classList.remove('hidden');
+          nextBtn.disabled = false;
+          pos = WIN; nextInfer = 0; draw();
+        }
+        for (const k of ['seen', 'unseen'] as const) paintGrid(k, 0, null);
         draw();
+        return true;
+      } catch (e) {
+        console.error('emg demo load failed', e);
+        state = 'error';
+        statusEl.textContent = '';
+        errEl.classList.remove('hidden');
+        retryBtn?.classList.remove('hidden');
+        return false;
+      } finally {
+        loadPromise = null;
       }
-      for (const k of ['seen', 'unseen'] as const) paintGrid(k, 0, null);
-    } catch (e) {
-      console.error('emg demo init failed', e);
-      statusEl.textContent = '';
-      errEl.classList.remove('hidden');
-    }
+    })();
+    return loadPromise;
   }
-  // Load only when needed: on play, or when the canvas scrolls into view.
-  let started = false;
-  const start = () => {
-    if (!started) { started = true; clipsReady = init(); }
-  };
+
   for (const el of [playBtn, gestureSel, playAll]) el.disabled = false;
   if (reduced) {
     new IntersectionObserver((es, o) => {
-      if (es.some((e) => e.isIntersecting)) { start(); o.disconnect(); }
+      if (es.some((e) => e.isIntersecting)) {
+        loadAll(false, true);   // clips only; models load on Next window
+        o.disconnect();
+      }
     }).observe(canvas);
   }
   draw();
