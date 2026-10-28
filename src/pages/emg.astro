@@ -64,6 +64,48 @@ const windowRows = (['cnn_w64', 'cnn_w128', 'cnn'] as const).map((model) => ({
   cx: (cells as any)[model].both.cross_subject,
 }));
 const cnnWS = (cells as any).cnn.both.within_subject.accuracy_mean;
+
+// robustness table: every cell from emg-summary.json
+const exps = summary.experiments as Record<string, any>;
+const _csCell = (e: string) =>
+  exps[e]?.cells?.cnn?.both?.cross_subject;
+const off = _csCell('offline_v1b');
+const v2 = _csCell('protocol_v2');
+const caus = _csCell('causal_v1');
+const comp = (summary as any).comparisons?.causal_vs_offline;
+const part = exps['causal_v1']?.participants;
+const cal = (summary as any).calibration;
+const pert = (summary as any).perturbations ?? {};
+const p100 = (x: number, w: string) => {
+  const v = x * 100;
+  if (!(v >= 0 && v <= 100)) throw new Error(`${w}=${v} out of [0,100]`);
+  return v.toFixed(1);
+};
+const robustRows = [
+  ['Seeds (offline control)',
+   off?.per_seed?.map((s: any) => p100(s.accuracy_mean, 'seed')).join(' / ')
+     + `%, SD ${(off.seed_std * 100).toFixed(2)} pp`],
+  ['Causal vs offline preprocessing',
+   `${p100(caus.accuracy_mean, 'causal')} vs ` +
+     `${p100(off.per_seed?.[0]?.accuracy_mean ?? off.accuracy_mean, 'offline')}` +
+     ` (${comp ? (comp.mean_delta * 100).toFixed(2) : '?'} pp paired)`],
+  ['Protocol v2 (re-drawn val subjects)',
+   `${p100(v2.accuracy_mean, 'v2')} ± ${(v2.accuracy_std * 100).toFixed(1)}%`],
+  ['Person-to-person spread (43)',
+   part ? `mean ${p100(part.mean, 'pmean')}, SD ${(part.sd * 100).toFixed(1)} pp, `
+     + `worst ${p100(part.min, 'pmin')}%, `
+     + `${part.below70} of ${part.n_participants} below 70%` : ''],
+  ['Calibration (temp. on val)',
+   cal ? `ECE ${(cal.ece_raw_min * 100).toFixed(1)}–`
+     + `${(cal.ece_raw_max * 100).toFixed(1)} pp to `
+     + `${(cal.ece_cal_min * 100).toFixed(1)}–`
+     + `${(cal.ece_cal_max * 100).toFixed(1)} pp` : ''],
+  ['Synthetic perturbations*',
+   pert.clean ? `1–2 dead channels -${((pert.clean - pert['channel_dropout:1']) * 100).toFixed(0)}/`
+     + `${((pert.clean - pert['channel_dropout:2']) * 100).toFixed(0)} pp; `
+     + `8 dead channels -${((pert.clean - pert['channel_dropout:8']) * 100).toFixed(0)} pp; `
+     + `0 dB noise -${((pert.clean - pert['noise:0']) * 100).toFixed(0)} pp` : ''],
+];
 ---
 
 <Base
@@ -293,33 +335,12 @@ const cnnWS = (cells as any).cnn.both.within_subject.accuracy_mean;
     <h2 class="mb-4 text-xl font-semibold">Robustness checks</h2>
     <table class="w-full max-w-2xl text-sm">
       <tbody>
-        <tr class="border-b border-neutral-100">
-          <td class="py-1 pr-4 font-medium">Seeds (offline control)</td>
-          <td class="py-1 tabular-nums">79.5 / 80.8 / 80.4% — SD 0.64 pp</td>
-        </tr>
-        <tr class="border-b border-neutral-100">
-          <td class="py-1 pr-4 font-medium">Causal vs offline preprocessing</td>
-          <td class="py-1 tabular-nums">80.0% vs 79.5% (+0.41 pp paired)</td>
-        </tr>
-        <tr class="border-b border-neutral-100">
-          <td class="py-1 pr-4 font-medium">Protocol v2 (re-drawn val subjects)</td>
-          <td class="py-1 tabular-nums">80.7 ± 2.3%</td>
-        </tr>
-        <tr class="border-b border-neutral-100">
-          <td class="py-1 pr-4 font-medium">Person-to-person spread (43)</td>
-          <td class="py-1 tabular-nums">mean 80.0, SD 8.6 pp, worst 54.9%,
-            5 of 43 below 70%</td>
-        </tr>
-        <tr class="border-b border-neutral-100">
-          <td class="py-1 pr-4 font-medium">Calibration (temp. on val)</td>
-          <td class="py-1 tabular-nums">ECE 8–13 pp → 2.5–7.2 pp; confidences
-            shown in the panels are calibrated</td>
-        </tr>
-        <tr class="border-b border-neutral-100">
-          <td class="py-1 pr-4 font-medium">Synthetic perturbations*</td>
-          <td class="py-1 tabular-nums">1–2 dead channels −5/−11 pp;
-            8 dead channels −45 pp; 0 dB noise −61 pp</td>
-        </tr>
+        {robustRows.map(([k, v]) => (
+          <tr class="border-b border-neutral-100">
+            <td class="py-1 pr-4 font-medium">{k}</td>
+            <td class="py-1 tabular-nums">{v}</td>
+          </tr>
+        ))}
       </tbody>
     </table>
     <p class="mt-1 text-xs text-neutral-500">* controlled synthetic
@@ -331,11 +352,10 @@ const cnnWS = (cells as any).cnn.both.within_subject.accuracy_mean;
     <ul class="max-w-prose list-disc space-y-2 pl-5 text-sm leading-relaxed text-neutral-700">
       <li>
         <strong>Within-subject</strong>: one person's repetitions 1–4 train
-        the model, repetitions 6–7 test it, same day.
+        the model, repetitions 6–7 test it, same day (repetition 5 is the validation set).
       </li>
       <li>
-        <strong>Cross-day</strong>: days 1–2 train, day 3 tests, same person.
-        the sensor has been taken off and put back on.
+        <strong>Cross-day</strong>: sessions on day 1 and day 8 train, the day-29 session tests, same person; the sensor has been taken off and put back on in between.
       </li>
       <li>
         <strong>Cross-subject</strong>: whole people are held out; the model
