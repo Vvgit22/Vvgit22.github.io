@@ -39,6 +39,7 @@ const m = demoMeta.models as Record<
   { accuracy_on_demo_clips: number; split_test_accuracy: number }
 >;
 const pct = (x: number) => (x * 100).toFixed(1);
+const signed = (x: number) => `${x >= 0 ? '+' : ''}${x.toFixed(2)}`;
 
 // "Which gestures are hard" is rendered from the results JSON, not from
 // pre-rendered figures, so every bar and cell is legible at page width.
@@ -81,14 +82,21 @@ const p100 = (x: number, w: string) => {
   if (!(v >= 0 && v <= 100)) throw new Error(`${w}=${v} out of [0,100]`);
   return v.toFixed(1);
 };
+const ci = off?.seed_ci95;
+const compF = (summary as any).comparisons?.causal_vs_offline_forearm;
+const compW = (summary as any).comparisons?.causal_vs_offline_wrist;
+const adapt = (summary as any).adaptation;
 const robustRows = [
-  ['Seeds (offline control)',
-   off?.per_seed?.map((s: any) => p100(s.accuracy_mean, 'seed')).join(' / ')
-     + `%, SD ${(off.seed_std * 100).toFixed(2)} pp`],
-  ['Causal vs offline preprocessing',
-   `${p100(caus.accuracy_mean, 'causal')} vs ` +
-     `${p100(off.per_seed?.[0]?.accuracy_mean ?? off.accuracy_mean, 'offline')}` +
-     ` (${comp ? (comp.mean_delta * 100).toFixed(2) : '?'} pp paired)`],
+  ['Seeds (offline control, 8 seeds)',
+   (off?.per_seed ?? []).map((s: any) => p100(s.accuracy_mean, 'seed'))
+     .join(' / ') + (ci ? `%, mean ${p100((ci[0]+ci[1])/2,'ci')} ` +
+     `[95% CI ${p100(ci[0],'ci')}–${p100(ci[1],'ci')}]` : '')],
+  ['Causal vs offline: forearm',
+   compF ? `${signed(compF.mean_delta * 100)} pp paired` : 'n/a'],
+  ['Causal vs offline: wrist',
+   compW ? `${signed(compW.mean_delta * 100)} pp paired` : 'n/a'],
+  ['Causal vs offline: both rings',
+   comp ? `${signed(comp.mean_delta * 100)} pp paired` : 'n/a'],
   ['Protocol v2 (re-drawn val subjects)',
    `${p100(v2.accuracy_mean, 'v2')} ± ${(v2.accuracy_std * 100).toFixed(1)}%`],
   ['Person-to-person spread (43)',
@@ -346,6 +354,47 @@ const robustRows = [
     <p class="mt-1 text-xs text-neutral-500">* controlled synthetic
       diagnostics, not evidence of real electrode re-donning robustness.</p>
   </section>
+
+  {adapt && (
+  <section class="mb-12">
+    <h2 class="mb-4 text-xl font-semibold">Adapting to a new person</h2>
+    <p class="mb-3 max-w-prose text-sm text-neutral-700">
+      With {Math.round(3*17*5)} seconds of day-1 recording (3 trials of each
+      gesture), a model that never saw you gains
+      {' '}{adapt.paired_vs_n0['3'].mean_delta_pp.toFixed(1)} points on later
+      days ({adapt.paired_vs_n0['3'].ci95_pp.map((x:number)=>x.toFixed(1)).join(' to ')} pp,
+      95% CI), from {p100(adapt.test_late['0'].mean,'a0')}% to
+      {' '}{p100(adapt.test_late['3'].mean,'a3')}%.
+    </p>
+    <table class="w-full max-w-2xl text-sm">
+      <thead><tr class="border-b border-neutral-200 text-left text-neutral-500">
+        <th class="py-1 pr-4 font-medium">day-1 repetitions</th>
+        <th class="py-1 pr-4 font-medium">days 8+29 acc</th>
+        <th class="py-1 pr-4 font-medium">worst person</th>
+        <th class="py-1 font-medium">below 70%</th>
+      </tr></thead>
+      <tbody>
+        {[0,1,2,3].map((n) => (
+          <tr class="border-b border-neutral-100">
+            <td class="py-1 pr-4">{n}</td>
+            <td class="py-1 pr-4 tabular-nums">
+              {p100(adapt.test_late[String(n)].mean,'m')} ±
+              {' '}{(adapt.test_late[String(n)].sd*100).toFixed(1)}</td>
+            <td class="py-1 pr-4 tabular-nums">
+              {p100(adapt.test_late[String(n)].min,'w')}%</td>
+            <td class="py-1 tabular-nums">
+              {adapt.test_late[String(n)].below70}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+    <p class="mt-2 text-xs text-neutral-500">
+      Same-day (trials 6-7) at n=3: {p100(adapt.test_same_day['3'].mean,'s')}%.
+      With one repetition the average rises but the worst person gets worse:
+      small-sample fine-tuning can overfit an individual.
+    </p>
+  </section>
+  )}
 
   <section class="mb-12">
     <h2 class="mb-4 text-xl font-semibold">How the data was split</h2>
@@ -632,8 +681,9 @@ make reproduce-full # adds cross-subject sweeps and ablations</pre>
       } else { pos = SEG; pause(); }
     }
     // every clip yields exactly 15 windows at starts 0,128,...,1792
+    const gNow = Number(gestureSel.value);   // may have advanced above
     while (nextInfer + WIN <= pos && nextInfer <= SEG - WIN) {
-      scheduleInfer(g, nextInfer, generation);
+      scheduleInfer(gNow, nextInfer, generation);
       nextInfer += STEP;
     }
     draw();
