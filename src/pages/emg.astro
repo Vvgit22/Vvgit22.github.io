@@ -39,6 +39,7 @@ const m = demoMeta.models as Record<
   { accuracy_on_demo_clips: number; split_test_accuracy: number }
 >;
 const pct = (x: number) => (x * 100).toFixed(1);
+const signed = (x: number) => `${x >= 0 ? '+' : ''}${x.toFixed(2)}`;
 
 // "Which gestures are hard" is rendered from the results JSON, not from
 // pre-rendered figures, so every bar and cell is legible at page width.
@@ -91,11 +92,11 @@ const robustRows = [
      .join(' / ') + (ci ? `%, mean ${p100((ci[0]+ci[1])/2,'ci')} ` +
      `[95% CI ${p100(ci[0],'ci')}–${p100(ci[1],'ci')}]` : '')],
   ['Causal vs offline: forearm',
-   compF ? `${(compF.mean_delta*100).toFixed(2)} pp paired` : 'n/a'],
+   compF ? `${signed(compF.mean_delta * 100)} pp paired` : 'n/a'],
   ['Causal vs offline: wrist',
-   compW ? `${(compW.mean_delta*100).toFixed(2)} pp paired` : 'n/a'],
+   compW ? `${signed(compW.mean_delta * 100)} pp paired` : 'n/a'],
   ['Causal vs offline: both rings',
-   comp ? `${(comp.mean_delta*100).toFixed(2)} pp paired` : 'n/a'],
+   comp ? `${signed(comp.mean_delta * 100)} pp paired` : 'n/a'],
   ['Protocol v2 (re-drawn val subjects)',
    `${p100(v2.accuracy_mean, 'v2')} ± ${(v2.accuracy_std * 100).toFixed(1)}%`],
   ['Person-to-person spread (43)',
